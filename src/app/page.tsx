@@ -36,6 +36,9 @@ export default function Home() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Counter to trigger JobHistory refresh after a successful job save
+  const [jobSavedCounter, setJobSavedCounter] = useState(0);
+
   // Ref to revoke previous blob URL
   const prevPdfUrl = useRef<string | null>(null);
 
@@ -89,6 +92,8 @@ export default function Home() {
       prevPdfUrl.current = null;
     }
 
+    let generatedRecordCount = records.length;
+
     try {
       if (config.outputMode === "pdf") {
         const result = await generatePdf({ records, config });
@@ -96,31 +101,52 @@ export default function Home() {
         prevPdfUrl.current = url;
         setPdfUrl(url);
         setGenerationWarnings(result.warnings);
+        generatedRecordCount = records.length - result.warnings.length;
+
+        // Auto-trigger download
+        const downloadName = `${(fileName ?? "labels").replace(/\.[^.]+$/, "")}.pdf`;
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       } else {
         const result = generateZpl({ records, config, dpi: config.dpi });
         setZplOutput(result.zpl);
         setGenerationWarnings(result.warnings);
+        generatedRecordCount = records.length - result.warnings.length;
       }
-
-      // POST job metadata (non-blocking)
-      fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: fileName ?? "unknown",
-          rowCount: records.length,
-        }),
-      }).catch(() => {
-        // Silently ignore — job persistence is non-blocking
-      });
     } catch (err) {
       console.error("Generation failed:", err);
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred.";
       setGenerationError(message);
-    } finally {
-      setGenerating(false);
     }
+
+    // Save job metadata regardless of generation outcome so the attempt is recorded
+    if (generatedRecordCount > 0) {
+      try {
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: fileName ?? "unknown",
+            rowCount: generatedRecordCount,
+          }),
+        });
+        if (!res.ok) {
+          console.warn("Job save returned non-OK status:", res.status);
+        } else {
+          // Trigger JobHistory refresh
+          setJobSavedCounter((c) => c + 1);
+        }
+      } catch (fetchErr) {
+        console.warn("Job save request failed:", fetchErr);
+      }
+    }
+
+    setGenerating(false);
   }, [config, records, fileName]);
 
   const handleCopyZpl = useCallback(async () => {
@@ -304,7 +330,7 @@ export default function Home() {
           <h2 className="mb-3 text-sm font-semibold text-gray-700">
             Job History
           </h2>
-          <JobHistory />
+          <JobHistory refreshKey={jobSavedCounter} />
         </section>
       </div>
     </div>

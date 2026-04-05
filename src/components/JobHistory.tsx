@@ -8,13 +8,15 @@ function formatTimestamp(iso: string): string {
   return date.toLocaleString();
 }
 
-export default function JobHistory() {
+export default function JobHistory({ refreshKey = 0 }: { refreshKey?: number }) {
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
 
     async function fetchJobs() {
       try {
@@ -48,7 +50,7 @@ export default function JobHistory() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (

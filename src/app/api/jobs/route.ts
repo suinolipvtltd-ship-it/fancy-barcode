@@ -36,7 +36,8 @@ export async function POST(request: Request) {
     };
 
     return Response.json(job, { status: 201 });
-  } catch {
+  } catch (e) {
+    console.error("POST /api/jobs error:", e);
     return Response.json(
       { warning: "Job history could not be saved." },
       { status: 500 }
@@ -61,7 +62,8 @@ export async function GET() {
     }));
 
     return Response.json(jobs);
-  } catch {
+  } catch (e) {
+    console.error("GET /api/jobs error:", e);
     return Response.json(
       { jobs: [], message: "Unable to load job history." },
       { status: 200 }
