@@ -7,6 +7,7 @@ export interface LabelCanvasProps {
   config: LabelConfig;
   widthPt: number; // 144 (2 inches × 72 pt/inch)
   heightPt: number; // 72  (1 inch × 72 pt/inch)
+  barcodeDataUrl?: string; // Pre-generated barcode image data URL
 }
 
 const styles = StyleSheet.create({
@@ -54,8 +55,9 @@ export function LabelCanvas({
   config,
   widthPt,
   heightPt,
+  barcodeDataUrl: preGeneratedUrl,
 }: LabelCanvasProps) {
-  const barcodeDataUrl = generateBarcodeDataUrl(record.barcodeValue);
+  const barcodeDataUrl = preGeneratedUrl ?? generateBarcodeDataUrl(record.barcodeValue);
 
   const showName = config.includeProductName;
   const showSku = config.includeSku;

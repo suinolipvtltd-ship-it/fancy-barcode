@@ -114,6 +114,7 @@ export default function Home() {
         // Silently ignore — job persistence is non-blocking
       });
     } catch (err) {
+      console.error("Generation failed:", err);
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred.";
       setGenerationError(message);

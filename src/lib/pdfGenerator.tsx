@@ -8,7 +8,7 @@ import {
   COLUMN_GAP,
   LEFT_MARGIN,
 } from "@/lib/constants";
-import { validateBarcodeValue } from "@/lib/barcodeUtils";
+import { validateBarcodeValue, generateBarcodeDataUrl } from "@/lib/barcodeUtils";
 import type { ProductRecord, LabelConfig } from "@/lib/types";
 
 export interface PdfGeneratorOptions {
@@ -37,12 +37,18 @@ export async function generatePdf(
 ): Promise<PdfGeneratorResult> {
   const { records, config } = options;
 
-  // Filter out records with invalid barcode values
+  // Filter out records with invalid barcode values and pre-generate barcode images
   const warnings: string[] = [];
   const validRecords: ProductRecord[] = [];
+  const barcodeImages: Map<string, string> = new Map();
+
   for (const record of records) {
     if (validateBarcodeValue(record.barcodeValue)) {
       validRecords.push(record);
+      // Pre-generate barcode data URL so LabelCanvas doesn't need to call it during react-pdf render
+      if (!barcodeImages.has(record.barcodeValue)) {
+        barcodeImages.set(record.barcodeValue, generateBarcodeDataUrl(record.barcodeValue));
+      }
     } else {
       warnings.push(
         `Row ${record.rowNumber}: barcode value could not be encoded, skipped`,
@@ -76,6 +82,7 @@ export async function generatePdf(
               config={config}
               widthPt={LABEL_WIDTH}
               heightPt={LABEL_HEIGHT}
+              barcodeDataUrl={barcodeImages.get(row[0].barcodeValue)}
             />
             {row.length > 1 && (
               <View style={{ marginLeft: COLUMN_GAP }}>
@@ -84,6 +91,7 @@ export async function generatePdf(
                   config={config}
                   widthPt={LABEL_WIDTH}
                   heightPt={LABEL_HEIGHT}
+                  barcodeDataUrl={barcodeImages.get(row[1].barcodeValue)}
                 />
               </View>
             )}
