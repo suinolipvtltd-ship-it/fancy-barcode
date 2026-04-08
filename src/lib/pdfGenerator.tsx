@@ -42,6 +42,8 @@ export async function generatePdf(
   const validRecords: ProductRecord[] = [];
   const barcodeImages: Map<string, string> = new Map();
 
+  console.log("[PDF] generatePdf called with", records.length, "records");
+
   for (const record of records) {
     if (validateBarcodeValue(record.barcodeValue)) {
       validRecords.push(record);
@@ -56,17 +58,24 @@ export async function generatePdf(
     }
   }
 
+  console.log("[PDF] valid records:", validRecords.length, "| warnings:", warnings.length);
+  console.log("[PDF] barcode images generated:", barcodeImages.size);
+
   // Build rows of label pairs
   const rows: ProductRecord[][] = [];
   for (let i = 0; i < validRecords.length; i += LABELS_PER_ROW) {
     rows.push(validRecords.slice(i, i + LABELS_PER_ROW));
   }
 
+  // Compute explicit page height to avoid react-pdf infinite pagination loop
+  // when only width is provided (known bug in @react-pdf/renderer v4.x with
+  // custom page sizes missing an explicit height).
+  const pageHeight = rows.length * LABEL_HEIGHT;
+
   const doc = (
     <Document>
       <Page
-        size={{ width: PAGE_WIDTH }}
-        orientation="portrait"
+        size={{ width: PAGE_WIDTH, height: pageHeight }}
         style={{ flexDirection: "column" }}
       >
         {rows.map((row, rowIndex) => (
@@ -102,10 +111,20 @@ export async function generatePdf(
   );
 
   try {
+    console.log("[PDF] calling pdf(doc)...");
     const instance = pdf(doc);
+    console.log("[PDF] pdf() returned, calling toBlob()...");
     const blob = await instance.toBlob();
+    console.log("[PDF] toBlob() resolved, blob size:", blob?.size);
+    if (!blob || blob.size === 0) {
+      throw new PdfGenerationError("Generated PDF blob is empty");
+    }
     return { blob, warnings };
   } catch (error) {
+    console.error("[PDF] error during pdf generation:", error);
+    if (error instanceof PdfGenerationError) {
+      throw error;
+    }
     const message =
       error instanceof Error ? error.message : "Unknown PDF rendering error";
     throw new PdfGenerationError(message);

@@ -75,7 +75,7 @@ describe("pdfGenerator", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("creates a Document with a Page of correct width and portrait orientation", async () => {
+  it("creates a Document with a Page of correct width and computed height", async () => {
     await generatePdf({ records: [makeRecord(1)], config: baseConfig });
     expect(capturedDoc).toBeDefined();
 
@@ -83,8 +83,8 @@ describe("pdfGenerator", () => {
     expect(pages).toHaveLength(1);
 
     const page = pages[0];
-    expect(page.props.size).toEqual({ width: PAGE_WIDTH });
-    expect(page.props.orientation).toBe("portrait");
+    // 1 record → 1 row → height = 1 * LABEL_HEIGHT
+    expect(page.props.size).toEqual({ width: PAGE_WIDTH, height: LABEL_HEIGHT });
   });
 
   it("arranges 2 labels in a single row", async () => {

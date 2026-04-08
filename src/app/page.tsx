@@ -96,7 +96,9 @@ export default function Home() {
 
     try {
       if (config.outputMode === "pdf") {
+        console.log("[PAGE] calling generatePdf with", records.length, "records");
         const result = await generatePdf({ records, config });
+        console.log("[PAGE] generatePdf returned, blob size:", result.blob.size);
         const url = URL.createObjectURL(result.blob);
         prevPdfUrl.current = url;
         setPdfUrl(url);
@@ -105,12 +107,14 @@ export default function Home() {
 
         // Auto-trigger download
         const downloadName = `${(fileName ?? "labels").replace(/\.[^.]+$/, "")}.pdf`;
+        console.log("[PAGE] triggering download:", downloadName);
         const a = document.createElement("a");
         a.href = url;
         a.download = downloadName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        console.log("[PAGE] download triggered");
       } else {
         const result = generateZpl({ records, config, dpi: config.dpi });
         setZplOutput(result.zpl);
@@ -118,7 +122,7 @@ export default function Home() {
         generatedRecordCount = records.length - result.warnings.length;
       }
     } catch (err) {
-      console.error("Generation failed:", err);
+      console.error("[PAGE] Generation failed:", err);
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred.";
       setGenerationError(message);
