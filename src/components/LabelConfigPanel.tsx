@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { LabelConfig } from "@/lib/types";
 
 export interface LabelConfigPanelProps {
@@ -13,41 +14,45 @@ export default function LabelConfigPanel({
   onChange,
   zplEnabled,
 }: LabelConfigPanelProps) {
+  const visibleElements = config.layout
+    ? config.layout.filter((el) => el.visible).map((el) => el.type)
+    : [];
+
   return (
     <fieldset data-testid="label-config-panel" className="space-y-4">
       <legend className="text-sm font-semibold text-gray-700 mb-2">
         Label Configuration
       </legend>
 
-      <div className="flex items-center gap-2">
-        <input
-          id="include-product-name"
-          type="checkbox"
-          checked={config.includeProductName}
-          onChange={(e) =>
-            onChange({ ...config, includeProductName: e.target.checked })
-          }
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        <label htmlFor="include-product-name" className="text-sm text-gray-700">
-          Include Product Name
-        </label>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="include-sku"
-          type="checkbox"
-          checked={config.includeSku}
-          onChange={(e) =>
-            onChange({ ...config, includeSku: e.target.checked })
-          }
-          className="h-4 w-4 rounded border-gray-300"
-        />
-        <label htmlFor="include-sku" className="text-sm text-gray-700">
-          Include SKU
-        </label>
-      </div>
+      {/* Show current layout summary */}
+      {config.layout && (
+        <div className="rounded border border-blue-100 bg-blue-50 p-3">
+          <p className="text-xs font-medium text-blue-700 mb-1">
+            Label layout (top → bottom):
+          </p>
+          <p className="text-xs text-blue-600">
+            {visibleElements.length > 0
+              ? visibleElements
+                  .map((t) =>
+                    t === "productName"
+                      ? "Product Name"
+                      : t === "barcode"
+                        ? "Barcode"
+                        : t === "sku"
+                          ? "SKU"
+                          : "MRP",
+                  )
+                  .join(" → ")
+              : "No elements visible"}
+          </p>
+          <Link
+            href="/designer"
+            className="mt-2 inline-block text-xs text-blue-600 underline hover:text-blue-800"
+          >
+            Edit in Label Designer →
+          </Link>
+        </div>
+      )}
 
       {zplEnabled && (
         <>
@@ -63,9 +68,7 @@ export default function LabelConfigPanel({
                   name="outputMode"
                   value="pdf"
                   checked={config.outputMode === "pdf"}
-                  onChange={() =>
-                    onChange({ ...config, outputMode: "pdf" })
-                  }
+                  onChange={() => onChange({ ...config, outputMode: "pdf" })}
                 />
                 <label htmlFor="output-pdf" className="text-sm text-gray-700">
                   PDF
@@ -78,9 +81,7 @@ export default function LabelConfigPanel({
                   name="outputMode"
                   value="zpl"
                   checked={config.outputMode === "zpl"}
-                  onChange={() =>
-                    onChange({ ...config, outputMode: "zpl" })
-                  }
+                  onChange={() => onChange({ ...config, outputMode: "zpl" })}
                 />
                 <label htmlFor="output-zpl" className="text-sm text-gray-700">
                   ZPL
@@ -91,14 +92,20 @@ export default function LabelConfigPanel({
 
           {config.outputMode === "zpl" && (
             <div className="space-y-1">
-              <label htmlFor="dpi-select" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="dpi-select"
+                className="text-sm font-medium text-gray-700"
+              >
                 DPI
               </label>
               <select
                 id="dpi-select"
                 value={config.dpi}
                 onChange={(e) =>
-                  onChange({ ...config, dpi: Number(e.target.value) as 203 | 300 })
+                  onChange({
+                    ...config,
+                    dpi: Number(e.target.value) as 203 | 300,
+                  })
                 }
                 className="block w-full rounded border-gray-300 text-sm"
               >

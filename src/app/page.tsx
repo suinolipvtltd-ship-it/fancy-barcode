@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import FileUploader from "@/components/FileUploader";
 import LabelConfigPanel from "@/components/LabelConfigPanel";
 import JobHistory from "@/components/JobHistory";
@@ -8,13 +8,15 @@ import PrintReminder from "@/components/PrintReminder";
 import { parseFile } from "@/lib/fileProcessor";
 import { generatePdf } from "@/lib/pdfGenerator";
 import { generateZpl } from "@/lib/zplGenerator";
-import type { ProductRecord, LabelConfig } from "@/lib/types";
+import { DEFAULT_LAYOUT } from "@/lib/constants";
+import type { ProductRecord, LabelConfig, LabelElement } from "@/lib/types";
 
 const DEFAULT_CONFIG: LabelConfig = {
   includeProductName: true,
   includeSku: true,
   outputMode: "pdf",
   dpi: 203,
+  layout: DEFAULT_LAYOUT,
 };
 
 export default function Home() {
@@ -27,6 +29,26 @@ export default function Home() {
 
   // Config state
   const [config, setConfig] = useState<LabelConfig>(DEFAULT_CONFIG);
+
+  // Load saved layout from designer on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("labelLayout");
+      if (saved) {
+        const layout = JSON.parse(saved) as LabelElement[];
+        setConfig((prev) => ({
+          ...prev,
+          layout,
+          includeProductName: layout.some(
+            (el) => el.type === "productName" && el.visible,
+          ),
+          includeSku: layout.some((el) => el.type === "sku" && el.visible),
+        }));
+      }
+    } catch {
+      // ignore invalid localStorage data
+    }
+  }, []);
 
   // Generation state
   const [generating, setGenerating] = useState(false);

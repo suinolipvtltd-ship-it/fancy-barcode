@@ -15,12 +15,23 @@ export interface ParseResult {
   errors: string[];
 }
 
+/** A single element that can appear on a label */
+export type LabelElementType = "productName" | "barcode" | "sku" | "mrp";
+
+/** Positioned element in the label layout (ordered top-to-bottom) */
+export interface LabelElement {
+  type: LabelElementType;
+  visible: boolean;
+}
+
 /** Label rendering configuration */
 export interface LabelConfig {
   includeProductName: boolean;
   includeSku: boolean;
   outputMode: "pdf" | "zpl";
   dpi: 203 | 300;
+  /** Ordered list of label elements for the visual designer */
+  layout: LabelElement[];
 }
 
 /** POST /api/jobs request body */

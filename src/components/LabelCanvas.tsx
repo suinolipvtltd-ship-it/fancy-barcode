@@ -1,13 +1,13 @@
 import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import type { ProductRecord, LabelConfig } from "@/lib/types";
+import type { ProductRecord, LabelConfig, LabelElement } from "@/lib/types";
 import { generateBarcodeDataUrl } from "@/lib/barcodeUtils";
 
 export interface LabelCanvasProps {
   record: ProductRecord;
   config: LabelConfig;
-  widthPt: number; // 144 (2 inches × 72 pt/inch)
-  heightPt: number; // 72  (1 inch × 72 pt/inch)
-  barcodeDataUrl?: string; // Pre-generated barcode image data URL
+  widthPt: number;
+  heightPt: number;
+  barcodeDataUrl?: string;
 }
 
 const styles = StyleSheet.create({
@@ -28,21 +28,12 @@ const styles = StyleSheet.create({
   barcodeImage: {
     objectFit: "contain",
   },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
   sku: {
     fontSize: 5,
-    textAlign: "left",
+    textAlign: "center",
+    width: "100%",
   },
   mrp: {
-    fontSize: 6,
-    fontWeight: "bold",
-    textAlign: "right",
-  },
-  mrpCentered: {
     fontSize: 6,
     fontWeight: "bold",
     textAlign: "center",
@@ -57,44 +48,75 @@ export function LabelCanvas({
   heightPt,
   barcodeDataUrl: preGeneratedUrl,
 }: LabelCanvasProps) {
-  const barcodeDataUrl = preGeneratedUrl ?? generateBarcodeDataUrl(record.barcodeValue);
+  const barcodeDataUrl =
+    preGeneratedUrl ?? generateBarcodeDataUrl(record.barcodeValue);
 
-  const showName = config.includeProductName;
-  const showSku = config.includeSku;
+  // Use layout ordering if available, otherwise fall back to legacy behavior
+  const visibleElements = config.layout
+    ? config.layout.filter((el) => el.visible)
+    : buildLegacyLayout(config);
 
-  // Calculate barcode image height based on what else is shown
-  let barcodeHeight = heightPt - 4; // padding
-  if (showName) barcodeHeight -= 10;
-  barcodeHeight -= 10; // bottom row (MRP always shown)
+  // Count non-barcode text rows to calculate barcode height
+  const textRows = visibleElements.filter((el) => el.type !== "barcode").length;
+  const barcodeHeight = Math.max(heightPt - 4 - textRows * 10, 20);
 
   return (
-    <View
-      style={[
-        styles.container,
-        { width: widthPt, height: heightPt },
-      ]}
-    >
-      {showName && (
-        <Text style={styles.productName}>{record.productName}</Text>
-      )}
-
-      <Image
-        src={barcodeDataUrl}
-        style={[
-          styles.barcodeImage,
-          {
-            width: widthPt - 8,
-            height: Math.max(barcodeHeight, 20),
-          },
-        ]}
-      />
-
-      <View style={styles.bottomRow}>
-        {showSku && <Text style={styles.sku}>{record.sku}</Text>}
-        <Text style={showSku ? styles.mrp : styles.mrpCentered}>
-          ₹{record.mrp}
-        </Text>
-      </View>
+    <View style={[styles.container, { width: widthPt, height: heightPt }]}>
+      {visibleElements.map((el, i) => renderElement(el, i, record, barcodeDataUrl, widthPt, barcodeHeight))}
     </View>
   );
+}
+
+function renderElement(
+  el: LabelElement,
+  key: number,
+  record: ProductRecord,
+  barcodeDataUrl: string,
+  widthPt: number,
+  barcodeHeight: number,
+) {
+  switch (el.type) {
+    case "productName":
+      return (
+        <Text key={key} style={styles.productName}>
+          {record.productName}
+        </Text>
+      );
+    case "barcode":
+      return (
+        <Image
+          key={key}
+          src={barcodeDataUrl}
+          style={[
+            styles.barcodeImage,
+            { width: widthPt - 8, height: barcodeHeight },
+          ]}
+        />
+      );
+    case "sku":
+      return (
+        <Text key={key} style={styles.sku}>
+          {record.sku}
+        </Text>
+      );
+    case "mrp":
+      return (
+        <Text key={key} style={styles.mrp}>
+          Rs.{record.mrp}
+        </Text>
+      );
+    default:
+      return null;
+  }
+}
+
+/** Backward-compatible layout from boolean flags */
+function buildLegacyLayout(config: LabelConfig): LabelElement[] {
+  const elements: LabelElement[] = [];
+  if (config.includeProductName)
+    elements.push({ type: "productName", visible: true });
+  elements.push({ type: "barcode", visible: true });
+  if (config.includeSku) elements.push({ type: "sku", visible: true });
+  elements.push({ type: "mrp", visible: true });
+  return elements;
 }

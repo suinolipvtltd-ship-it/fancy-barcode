@@ -1,13 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import type { ProductRecord, LabelConfig } from "@/lib/types";
-import { LABEL_WIDTH, LABEL_HEIGHT } from "@/lib/constants";
+import type { ProductRecord, LabelConfig, LabelElement } from "@/lib/types";
+import { LABEL_WIDTH, LABEL_HEIGHT, DEFAULT_LAYOUT } from "@/lib/constants";
 
 // Mock barcodeUtils to avoid canvas dependency in tests
 vi.mock("@/lib/barcodeUtils", () => ({
   generateBarcodeDataUrl: vi.fn(
-    () =>
-      "data:image/png;base64,mockBarcodeData"
+    () => "data:image/png;base64,mockBarcodeData",
   ),
 }));
 
@@ -36,7 +35,18 @@ const baseConfig: LabelConfig = {
   includeSku: true,
   outputMode: "pdf",
   dpi: 203,
+  layout: DEFAULT_LAYOUT,
 };
+
+/** Helper to create a config with specific elements hidden */
+function hideElement(type: string): LabelConfig {
+  return {
+    ...baseConfig,
+    layout: baseConfig.layout.map((el) =>
+      el.type === type ? { ...el, visible: false } : el,
+    ),
+  };
+}
 
 function renderLabel(record: ProductRecord, config: LabelConfig): React.ReactElement {
   return LabelCanvas({
@@ -86,44 +96,38 @@ function findByType(node: any, type: string): any[] {
 }
 
 describe("LabelCanvas", () => {
-  it("renders product name when includeProductName is true", () => {
+  it("renders product name when visible in layout", () => {
     const el = renderLabel(baseRecord, baseConfig);
     const strings = collectStrings(el);
     expect(strings).toContain("Test Product Name");
   });
 
-  it("omits product name when includeProductName is false", () => {
-    const config = { ...baseConfig, includeProductName: false };
-    const el = renderLabel(baseRecord, config);
+  it("omits product name when hidden in layout", () => {
+    const el = renderLabel(baseRecord, hideElement("productName"));
     const strings = collectStrings(el);
     expect(strings).not.toContain("Test Product Name");
   });
 
-  it("renders SKU when includeSku is true", () => {
+  it("renders SKU when visible in layout", () => {
     const el = renderLabel(baseRecord, baseConfig);
     const strings = collectStrings(el);
     expect(strings).toContain("SKU-12345");
   });
 
-  it("omits SKU when includeSku is false", () => {
-    const config = { ...baseConfig, includeSku: false };
-    const el = renderLabel(baseRecord, config);
+  it("omits SKU when hidden in layout", () => {
+    const el = renderLabel(baseRecord, hideElement("sku"));
     const strings = collectStrings(el);
     expect(strings).not.toContain("SKU-12345");
   });
 
-  it("always renders MRP regardless of config", () => {
-    const config: LabelConfig = {
-      ...baseConfig,
-      includeProductName: false,
-      includeSku: false,
-    };
+  it("always renders MRP when visible in layout", () => {
+    const config = hideElement("productName");
     const el = renderLabel(baseRecord, config);
     const strings = collectStrings(el);
     expect(strings.some((s) => s.includes("199.00"))).toBe(true);
   });
 
-  it("always renders barcode image", () => {
+  it("always renders barcode image when visible", () => {
     const el = renderLabel(baseRecord, baseConfig);
     const images = findByType(el, "Image");
     expect(images.length).toBeGreaterThanOrEqual(1);

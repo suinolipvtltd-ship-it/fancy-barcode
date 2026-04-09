@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { generateZpl } from "./zplGenerator";
 import type { ProductRecord, LabelConfig } from "./types";
 import { validateBarcodeValue } from "@/lib/barcodeUtils";
+import { DEFAULT_LAYOUT } from "@/lib/constants";
 
 // Mock barcodeUtils to avoid canvas dependency
 vi.mock("@/lib/barcodeUtils", () => ({
@@ -13,6 +14,7 @@ const baseConfig: LabelConfig = {
   includeSku: true,
   outputMode: "zpl",
   dpi: 203,
+  layout: DEFAULT_LAYOUT,
 };
 
 const sampleRecord: ProductRecord = {
@@ -83,6 +85,7 @@ describe("generateZpl", () => {
       includeSku: false,
       outputMode: "zpl",
       dpi: 203,
+      layout: DEFAULT_LAYOUT,
     };
     const result = generateZpl({ records: [sampleRecord], config, dpi: 203 });
     expect(result.zpl).toContain("^BC");

@@ -29,7 +29,7 @@ vi.mock("@react-pdf/renderer", () => ({
 
 import { generatePdf, PdfGenerationError } from "./pdfGenerator";
 import type { PdfGeneratorResult } from "./pdfGenerator";
-import { PAGE_WIDTH, LABEL_WIDTH, LABEL_HEIGHT, COLUMN_GAP, LEFT_MARGIN } from "./constants";
+import { PAGE_WIDTH, LABEL_WIDTH, LABEL_HEIGHT, COLUMN_GAP, LEFT_MARGIN, DEFAULT_LAYOUT } from "./constants";
 
 function makeRecord(index: number): ProductRecord {
   return {
@@ -46,6 +46,7 @@ const baseConfig: LabelConfig = {
   includeSku: true,
   outputMode: "pdf",
   dpi: 203,
+  layout: DEFAULT_LAYOUT,
 };
 
 /** Recursively find all elements matching a type string */
