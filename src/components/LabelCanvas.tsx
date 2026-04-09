@@ -85,6 +85,13 @@ export function LabelCanvas({
   );
 }
 
+/** Format price string to always show 2 decimal places */
+function formatPrice(value: string): string {
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  return num.toFixed(2);
+}
+
 function renderElement(
   el: LabelElement,
   key: number,
@@ -98,7 +105,7 @@ function renderElement(
     case "mrpSku": {
       const showMrp = config.showMrp !== false;
       const text = showMrp
-        ? `MRP ${record.mrp}/${record.sku}`
+        ? `MRP Rs ${formatPrice(record.mrp)}/${record.sku}`
         : record.sku;
       return (
         <Text key={key} style={styles.mrpSku}>
@@ -138,7 +145,7 @@ function renderElement(
     case "mrp":
       return (
         <Text key={key} style={styles.mrp}>
-          MRP {record.mrp}
+          MRP Rs {formatPrice(record.mrp)}
         </Text>
       );
     default:
