@@ -6,6 +6,7 @@ interface LabelPreviewProps {
   layout: LabelElement[];
   widthPx: number;
   heightPx: number;
+  showMrp?: boolean;
 }
 
 /** HTML-based live preview of the label layout (not react-pdf). */
@@ -13,6 +14,7 @@ export default function LabelPreview({
   layout,
   widthPx,
   heightPx,
+  showMrp = true,
 }: LabelPreviewProps) {
   const visible = layout.filter((el) => el.visible);
 
@@ -32,7 +34,7 @@ export default function LabelPreview({
                 key={el.type}
                 className="w-full truncate text-center text-[13px] font-bold leading-tight text-gray-900"
               >
-                ₹ 1199.00/ASF1010AG-4
+                {showMrp ? "MRP 1199.00/ASF1010AG-4" : "ASF1010AG-4"}
               </span>
             );
           case "productName":
@@ -88,7 +90,7 @@ export default function LabelPreview({
                 key={el.type}
                 className="text-[12px] font-bold text-gray-900"
               >
-                ₹ 299.00
+                MRP 299.00
               </span>
             );
           default:

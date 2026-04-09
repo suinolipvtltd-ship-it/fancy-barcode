@@ -16,6 +16,7 @@ const DEFAULT_CONFIG: LabelConfig = {
   includeSku: true,
   outputMode: "pdf",
   dpi: 203,
+  showMrp: true,
   layout: DEFAULT_LAYOUT,
 };
 
@@ -34,11 +35,14 @@ export default function Home() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("labelLayout");
+      const savedShowMrp = localStorage.getItem("labelShowMrp");
       if (saved) {
         const layout = JSON.parse(saved) as LabelElement[];
+        const showMrp = savedShowMrp ? JSON.parse(savedShowMrp) === true : true;
         setConfig((prev) => ({
           ...prev,
           layout,
+          showMrp,
           includeProductName: layout.some(
             (el) => el.type === "productName" && el.visible,
           ),

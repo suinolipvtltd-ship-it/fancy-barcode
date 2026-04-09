@@ -30,6 +30,8 @@ export interface LabelConfig {
   includeSku: boolean;
   outputMode: "pdf" | "zpl";
   dpi: 203 | 300;
+  /** Whether to show MRP price in the combined MRP/SKU line */
+  showMrp: boolean;
   /** Ordered list of label elements for the visual designer */
   layout: LabelElement[];
 }

@@ -18,6 +18,7 @@ export default function DesignerPage() {
   const [layout, setLayout] = useState<LabelElement[]>(
     () => JSON.parse(JSON.stringify(DEFAULT_LAYOUT)),
   );
+  const [showMrp, setShowMrp] = useState(true);
   const [saved, setSaved] = useState(false);
 
   const moveUp = useCallback((index: number) => {
@@ -51,14 +52,17 @@ export default function DesignerPage() {
 
   const handleSave = useCallback(() => {
     localStorage.setItem("labelLayout", JSON.stringify(layout));
+    localStorage.setItem("labelShowMrp", JSON.stringify(showMrp));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [layout]);
+  }, [layout, showMrp]);
 
   const handleReset = useCallback(() => {
     const fresh = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
     setLayout(fresh);
+    setShowMrp(true);
     localStorage.removeItem("labelLayout");
+    localStorage.removeItem("labelShowMrp");
     setSaved(false);
   }, []);
 
@@ -89,7 +93,6 @@ export default function DesignerPage() {
                       : "border-gray-200 bg-gray-50 opacity-60"
                   }`}
                 >
-                  {/* Visibility toggle */}
                   <input
                     type="checkbox"
                     checked={el.visible}
@@ -97,13 +100,9 @@ export default function DesignerPage() {
                     className="h-4 w-4 rounded border-gray-300"
                     aria-label={`Toggle ${ELEMENT_LABELS[el.type]}`}
                   />
-
-                  {/* Label */}
                   <span className="flex-1 text-sm font-medium text-gray-800">
                     {ELEMENT_LABELS[el.type]}
                   </span>
-
-                  {/* Move buttons */}
                   <button
                     onClick={() => moveUp(i)}
                     disabled={i === 0}
@@ -122,6 +121,23 @@ export default function DesignerPage() {
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Show MRP toggle */}
+            <div className="mt-4 flex items-center gap-2 rounded border border-gray-200 bg-white p-3">
+              <input
+                id="show-mrp"
+                type="checkbox"
+                checked={showMrp}
+                onChange={(e) => {
+                  setShowMrp(e.target.checked);
+                  setSaved(false);
+                }}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="show-mrp" className="text-sm font-medium text-gray-800">
+                Show MRP price on label
+              </label>
             </div>
 
             <div className="mt-4 flex gap-2">
@@ -150,6 +166,7 @@ export default function DesignerPage() {
                 layout={layout}
                 widthPx={LABEL_WIDTH * 2}
                 heightPx={LABEL_HEIGHT * 2}
+                showMrp={showMrp}
               />
             </div>
             <p className="mt-2 text-center text-xs text-gray-400">

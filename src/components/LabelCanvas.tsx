@@ -79,7 +79,7 @@ export function LabelCanvas({
   return (
     <View style={[styles.container, { width: widthPt, height: heightPt }]}>
       {visibleElements.map((el, i) =>
-        renderElement(el, i, record, barcodeDataUrl, widthPt, barcodeHeight),
+        renderElement(el, i, record, config, barcodeDataUrl, widthPt, barcodeHeight),
       )}
     </View>
   );
@@ -89,17 +89,23 @@ function renderElement(
   el: LabelElement,
   key: number,
   record: ProductRecord,
+  config: LabelConfig,
   barcodeDataUrl: string,
   widthPt: number,
   barcodeHeight: number,
 ) {
   switch (el.type) {
-    case "mrpSku":
+    case "mrpSku": {
+      const showMrp = config.showMrp !== false;
+      const text = showMrp
+        ? `MRP ${record.mrp}/${record.sku}`
+        : record.sku;
       return (
         <Text key={key} style={styles.mrpSku}>
-          {"\u20B9"} {record.mrp}/{record.sku}
+          {text}
         </Text>
       );
+    }
     case "productName":
       return (
         <Text key={key} style={styles.productName}>
@@ -132,7 +138,7 @@ function renderElement(
     case "mrp":
       return (
         <Text key={key} style={styles.mrp}>
-          {"\u20B9"} {record.mrp}
+          MRP {record.mrp}
         </Text>
       );
     default:

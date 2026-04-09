@@ -9,6 +9,7 @@ const defaultConfig: LabelConfig = {
   includeSku: true,
   outputMode: "pdf",
   dpi: 203,
+  showMrp: true,
   layout: DEFAULT_LAYOUT,
 };
 

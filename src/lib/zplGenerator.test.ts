@@ -14,6 +14,7 @@ const baseConfig: LabelConfig = {
   includeSku: true,
   outputMode: "zpl",
   dpi: 203,
+  showMrp: true,
   layout: DEFAULT_LAYOUT,
 };
 
@@ -85,6 +86,7 @@ describe("generateZpl", () => {
       includeSku: false,
       outputMode: "zpl",
       dpi: 203,
+      showMrp: true,
       layout: DEFAULT_LAYOUT,
     };
     const result = generateZpl({ records: [sampleRecord], config, dpi: 203 });
