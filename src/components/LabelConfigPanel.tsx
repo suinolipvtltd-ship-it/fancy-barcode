@@ -33,17 +33,17 @@ export default function LabelConfigPanel({
           <p className="text-xs text-blue-600">
             {visibleElements.length > 0
               ? visibleElements
-                  .map((t) =>
-                    t === "productName"
-                      ? "Product Name"
-                      : t === "barcode"
-                        ? "Barcode"
-                        : t === "barcodeNumber"
-                          ? "Barcode Number"
-                          : t === "sku"
-                            ? "SKU"
-                            : "MRP",
-                  )
+                  .map((t) => {
+                    const names: Record<string, string> = {
+                      productName: "Product Name",
+                      barcode: "Barcode",
+                      barcodeNumber: "Barcode Number",
+                      sku: "SKU",
+                      mrp: "MRP",
+                      mrpSku: "MRP/SKU",
+                    };
+                    return names[t] ?? t;
+                  })
                   .join(" → ")
               : "No elements visible"}
           </p>

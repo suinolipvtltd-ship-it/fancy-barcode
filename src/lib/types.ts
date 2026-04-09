@@ -16,7 +16,7 @@ export interface ParseResult {
 }
 
 /** A single element that can appear on a label */
-export type LabelElementType = "productName" | "barcode" | "barcodeNumber" | "sku" | "mrp";
+export type LabelElementType = "productName" | "barcode" | "barcodeNumber" | "sku" | "mrp" | "mrpSku";
 
 /** Positioned element in the label layout (ordered top-to-bottom) */
 export interface LabelElement {

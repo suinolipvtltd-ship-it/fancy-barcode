@@ -11,6 +11,7 @@ const ELEMENT_LABELS: Record<LabelElementType, string> = {
   barcodeNumber: "Barcode Number",
   sku: "SKU",
   mrp: "MRP (Price)",
+  mrpSku: "MRP / SKU (combined)",
 };
 
 export default function DesignerPage() {

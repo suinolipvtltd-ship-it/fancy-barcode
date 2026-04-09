@@ -17,7 +17,7 @@ describe("LabelConfigPanel", () => {
     render(
       <LabelConfigPanel config={defaultConfig} onChange={vi.fn()} zplEnabled={false} />,
     );
-    expect(screen.getByText(/Product Name → Barcode → Barcode Number → SKU → MRP/)).toBeDefined();
+    expect(screen.getByText(/MRP\/SKU → Barcode → Barcode Number/)).toBeDefined();
   });
 
   it("renders a link to the label designer", () => {

@@ -18,7 +18,7 @@ export default function LabelPreview({
 
   return (
     <div
-      className="relative flex flex-col items-center justify-between overflow-hidden border border-gray-400 bg-white"
+      className="relative flex flex-col items-center justify-center overflow-hidden border border-gray-400 bg-white"
       style={{ width: widthPx, height: heightPx, padding: 4 }}
     >
       {visible.length === 0 && (
@@ -26,11 +26,20 @@ export default function LabelPreview({
       )}
       {visible.map((el) => {
         switch (el.type) {
+          case "mrpSku":
+            return (
+              <span
+                key={el.type}
+                className="w-full truncate text-center text-[13px] font-bold leading-tight text-gray-900"
+              >
+                ₹ 1199.00/ASF1010AG-4
+              </span>
+            );
           case "productName":
             return (
               <span
                 key={el.type}
-                className="w-full truncate text-center text-[11px] leading-tight text-gray-800"
+                className="w-full truncate text-center text-[11px] font-bold leading-tight text-gray-800"
               >
                 Sample Product Name
               </span>
@@ -59,16 +68,16 @@ export default function LabelPreview({
             return (
               <span
                 key={el.type}
-                className="text-[9px] text-gray-600"
+                className="text-[12px] font-bold text-gray-900"
               >
-                1234567890
+                47712174
               </span>
             );
           case "sku":
             return (
               <span
                 key={el.type}
-                className="text-[9px] text-gray-500"
+                className="text-[10px] font-bold text-gray-700"
               >
                 SKU-12345
               </span>
@@ -77,9 +86,9 @@ export default function LabelPreview({
             return (
               <span
                 key={el.type}
-                className="text-[11px] font-bold text-gray-900"
+                className="text-[12px] font-bold text-gray-900"
               >
-                Rs.299
+                ₹ 299.00
               </span>
             );
           default:

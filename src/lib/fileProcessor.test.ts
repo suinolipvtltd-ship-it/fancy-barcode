@@ -85,7 +85,6 @@ describe("parseFile", () => {
 
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain("MRP");
-    expect(result.errors[0]).toContain("Barcode Value");
     expect(result.records).toHaveLength(0);
   });
 
@@ -133,5 +132,20 @@ describe("parseFile", () => {
     expect(result.records).toHaveLength(0);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain("No valid product data");
+  });
+
+  it("auto-generates sequential barcode numbers when Barcode Value column is missing", async () => {
+    const file = createXlsxFile([
+      { "Product Name": "A", SKU: "A-1", MRP: "10" },
+      { "Product Name": "B", SKU: "B-1", MRP: "20" },
+    ]);
+
+    const result = await parseFile(file);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records).toHaveLength(2);
+    expect(result.records[0].barcodeValue).toBe("10000001");
+    expect(result.records[1].barcodeValue).toBe("10000002");
+    expect(result.warnings.some((w) => w.includes("generated automatically"))).toBe(true);
   });
 });

@@ -18,11 +18,12 @@ export const COLUMN_GAP = 9;
 /** Left margin: 0.0375 inches */
 export const LEFT_MARGIN = 2.7;
 
-/** Default label element ordering (top to bottom) */
+/** Default label element ordering matching sample PDF: MRP/SKU → Barcode → Barcode Number */
 export const DEFAULT_LAYOUT: import("@/lib/types").LabelElement[] = [
-  { type: "productName", visible: true },
+  { type: "mrpSku", visible: true },
   { type: "barcode", visible: true },
   { type: "barcodeNumber", visible: true },
-  { type: "sku", visible: true },
-  { type: "mrp", visible: true },
+  { type: "productName", visible: false },
+  { type: "sku", visible: false },
+  { type: "mrp", visible: false },
 ];

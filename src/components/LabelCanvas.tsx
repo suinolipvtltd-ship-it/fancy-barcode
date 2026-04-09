@@ -13,33 +13,45 @@ export interface LabelCanvasProps {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "column",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
     padding: 2,
   },
+  mrpSku: {
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "100%",
+    marginBottom: 2,
+  },
   productName: {
-    fontSize: 6,
+    fontSize: 7,
+    fontWeight: "bold",
     textAlign: "center",
     maxLines: 1,
     textOverflow: "ellipsis",
     width: "100%",
+    marginBottom: 1,
   },
   barcodeImage: {
     objectFit: "contain",
   },
   barcodeNumber: {
-    fontSize: 5,
+    fontSize: 7,
+    fontWeight: "bold",
     textAlign: "center",
     width: "100%",
+    marginTop: 2,
   },
   sku: {
-    fontSize: 5,
+    fontSize: 6,
+    fontWeight: "bold",
     textAlign: "center",
     width: "100%",
   },
   mrp: {
-    fontSize: 6,
+    fontSize: 7,
     fontWeight: "bold",
     textAlign: "center",
     width: "100%",
@@ -56,18 +68,19 @@ export function LabelCanvas({
   const barcodeDataUrl =
     preGeneratedUrl ?? generateBarcodeDataUrl(record.barcodeValue);
 
-  // Use layout ordering if available, otherwise fall back to legacy behavior
   const visibleElements = config.layout
     ? config.layout.filter((el) => el.visible)
     : buildLegacyLayout(config);
 
-  // Count non-barcode text rows to calculate barcode height
+  // Calculate barcode height from remaining space after text rows
   const textRows = visibleElements.filter((el) => el.type !== "barcode").length;
-  const barcodeHeight = Math.max(heightPt - 4 - textRows * 10, 20);
+  const barcodeHeight = Math.max(heightPt - 4 - textRows * 12, 20);
 
   return (
     <View style={[styles.container, { width: widthPt, height: heightPt }]}>
-      {visibleElements.map((el, i) => renderElement(el, i, record, barcodeDataUrl, widthPt, barcodeHeight))}
+      {visibleElements.map((el, i) =>
+        renderElement(el, i, record, barcodeDataUrl, widthPt, barcodeHeight),
+      )}
     </View>
   );
 }
@@ -81,6 +94,12 @@ function renderElement(
   barcodeHeight: number,
 ) {
   switch (el.type) {
+    case "mrpSku":
+      return (
+        <Text key={key} style={styles.mrpSku}>
+          {"\u20B9"} {record.mrp}/{record.sku}
+        </Text>
+      );
     case "productName":
       return (
         <Text key={key} style={styles.productName}>
@@ -113,7 +132,7 @@ function renderElement(
     case "mrp":
       return (
         <Text key={key} style={styles.mrp}>
-          Rs.{record.mrp}
+          {"\u20B9"} {record.mrp}
         </Text>
       );
     default:
@@ -124,11 +143,8 @@ function renderElement(
 /** Backward-compatible layout from boolean flags */
 function buildLegacyLayout(config: LabelConfig): LabelElement[] {
   const elements: LabelElement[] = [];
-  if (config.includeProductName)
-    elements.push({ type: "productName", visible: true });
+  elements.push({ type: "mrpSku", visible: true });
   elements.push({ type: "barcode", visible: true });
   elements.push({ type: "barcodeNumber", visible: true });
-  if (config.includeSku) elements.push({ type: "sku", visible: true });
-  elements.push({ type: "mrp", visible: true });
   return elements;
 }

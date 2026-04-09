@@ -38,12 +38,12 @@ const baseConfig: LabelConfig = {
   layout: DEFAULT_LAYOUT,
 };
 
-/** Helper to create a config with specific elements hidden */
-function hideElement(type: string): LabelConfig {
+/** Helper to create a config with specific elements shown */
+function withElement(type: string, visible: boolean): LabelConfig {
   return {
     ...baseConfig,
     layout: baseConfig.layout.map((el) =>
-      el.type === type ? { ...el, visible: false } : el,
+      el.type === type ? { ...el, visible } : el,
     ),
   };
 }
@@ -96,42 +96,44 @@ function findByType(node: any, type: string): any[] {
 }
 
 describe("LabelCanvas", () => {
-  it("renders product name when visible in layout", () => {
+  it("renders MRP/SKU combined line by default", () => {
     const el = renderLabel(baseRecord, baseConfig);
-    const strings = collectStrings(el);
-    expect(strings).toContain("Test Product Name");
-  });
-
-  it("omits product name when hidden in layout", () => {
-    const el = renderLabel(baseRecord, hideElement("productName"));
-    const strings = collectStrings(el);
-    expect(strings).not.toContain("Test Product Name");
-  });
-
-  it("renders SKU when visible in layout", () => {
-    const el = renderLabel(baseRecord, baseConfig);
-    const strings = collectStrings(el);
-    expect(strings).toContain("SKU-12345");
-  });
-
-  it("omits SKU when hidden in layout", () => {
-    const el = renderLabel(baseRecord, hideElement("sku"));
-    const strings = collectStrings(el);
-    expect(strings).not.toContain("SKU-12345");
-  });
-
-  it("always renders MRP when visible in layout", () => {
-    const config = hideElement("productName");
-    const el = renderLabel(baseRecord, config);
     const strings = collectStrings(el);
     expect(strings.some((s) => s.includes("199.00"))).toBe(true);
+    expect(strings.some((s) => s.includes("SKU-12345"))).toBe(true);
   });
 
-  it("always renders barcode image when visible", () => {
+  it("renders barcode number by default", () => {
+    const el = renderLabel(baseRecord, baseConfig);
+    const strings = collectStrings(el);
+    expect(strings).toContain("1234567890");
+  });
+
+  it("renders barcode image by default", () => {
     const el = renderLabel(baseRecord, baseConfig);
     const images = findByType(el, "Image");
     expect(images.length).toBeGreaterThanOrEqual(1);
     expect(images[0].props.src).toContain("data:image/png");
+  });
+
+  it("renders product name when enabled in layout", () => {
+    const config = withElement("productName", true);
+    const el = renderLabel(baseRecord, config);
+    const strings = collectStrings(el);
+    expect(strings).toContain("Test Product Name");
+  });
+
+  it("omits product name when hidden in layout (default)", () => {
+    const el = renderLabel(baseRecord, baseConfig);
+    const strings = collectStrings(el);
+    expect(strings).not.toContain("Test Product Name");
+  });
+
+  it("hides barcode number when toggled off", () => {
+    const config = withElement("barcodeNumber", false);
+    const el = renderLabel(baseRecord, config);
+    const strings = collectStrings(el);
+    expect(strings).not.toContain("1234567890");
   });
 
   it("renders container with correct dimensions", () => {

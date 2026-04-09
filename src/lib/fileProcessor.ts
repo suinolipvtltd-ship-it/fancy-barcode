@@ -1,12 +1,11 @@
 import * as XLSX from "xlsx";
 import type { ProductRecord, ParseResult } from "@/lib/types";
 
-const REQUIRED_COLUMNS = [
-  "Product Name",
-  "SKU",
-  "MRP",
-  "Barcode Value",
-] as const;
+/** Columns that must always be present */
+const REQUIRED_COLUMNS = ["Product Name", "SKU", "MRP"] as const;
+
+/** Starting value for auto-generated barcode numbers */
+const AUTO_BARCODE_START = 10000001;
 
 /**
  * Returns true if the file extension is .xlsx or .csv (case-insensitive).
@@ -18,7 +17,8 @@ export function validateFileExtension(fileName: string): boolean {
 
 /**
  * Parses an uploaded .xlsx or .csv file into an array of ProductRecords.
- * Validates required columns and skips rows with empty Barcode Value.
+ * Validates required columns. If "Barcode Value" column is missing,
+ * sequential barcode numbers are generated automatically.
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const records: ProductRecord[] = [];
@@ -51,7 +51,6 @@ export async function parseFile(file: File): Promise<ParseResult> {
   const sheet = workbook.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
-  // Validate required columns using the header keys from the first row
   if (rows.length === 0) {
     return {
       records: [],
@@ -62,7 +61,7 @@ export async function parseFile(file: File): Promise<ParseResult> {
 
   const headers = Object.keys(rows[0]);
   const missingColumns = REQUIRED_COLUMNS.filter(
-    (col) => !headers.includes(col)
+    (col) => !headers.includes(col),
   );
 
   if (missingColumns.length > 0) {
@@ -73,15 +72,31 @@ export async function parseFile(file: File): Promise<ParseResult> {
     };
   }
 
-  // Iterate rows — row numbers are 1-based, +2 accounts for header row + 0-index
+  const hasBarcodeColumn = headers.includes("Barcode Value");
+
+  if (!hasBarcodeColumn) {
+    warnings.push(
+      "\"Barcode Value\" column not found — barcode numbers will be generated automatically.",
+    );
+  }
+
+  let autoCounter = AUTO_BARCODE_START;
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNumber = i + 2; // row 1 is the header
-    const barcodeValue = String(row["Barcode Value"] ?? "").trim();
 
-    if (!barcodeValue) {
-      warnings.push(`Row ${rowNumber}: empty Barcode Value, skipped`);
-      continue;
+    let barcodeValue: string;
+
+    if (hasBarcodeColumn) {
+      barcodeValue = String(row["Barcode Value"] ?? "").trim();
+      if (!barcodeValue) {
+        warnings.push(`Row ${rowNumber}: empty Barcode Value, skipped`);
+        continue;
+      }
+    } else {
+      // Auto-generate sequential barcode number
+      barcodeValue = String(autoCounter++);
     }
 
     records.push({
