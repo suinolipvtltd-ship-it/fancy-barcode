@@ -34,7 +34,7 @@ export default function LabelPreview({
                 key={el.type}
                 className="w-full truncate text-center text-[13px] font-bold leading-tight text-gray-900"
               >
-                {showMrp ? "MRP 1199.00/ASF1010AG-4" : "ASF1010AG-4"}
+                {showMrp ? "MRP Rs 1199.00/ASF1010AG-4" : "ASF1010AG-4"}
               </span>
             );
           case "productName":
@@ -90,7 +90,7 @@ export default function LabelPreview({
                 key={el.type}
                 className="text-[12px] font-bold text-gray-900"
               >
-                MRP 299.00
+                MRP Rs 299.00
               </span>
             );
           default:
