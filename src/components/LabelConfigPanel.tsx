@@ -38,9 +38,11 @@ export default function LabelConfigPanel({
                       ? "Product Name"
                       : t === "barcode"
                         ? "Barcode"
-                        : t === "sku"
-                          ? "SKU"
-                          : "MRP",
+                        : t === "barcodeNumber"
+                          ? "Barcode Number"
+                          : t === "sku"
+                            ? "SKU"
+                            : "MRP",
                   )
                   .join(" → ")
               : "No elements visible"}

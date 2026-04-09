@@ -8,6 +8,7 @@ import LabelPreview from "@/components/LabelPreview";
 const ELEMENT_LABELS: Record<LabelElementType, string> = {
   productName: "Product Name",
   barcode: "Barcode",
+  barcodeNumber: "Barcode Number",
   sku: "SKU",
   mrp: "MRP (Price)",
 };

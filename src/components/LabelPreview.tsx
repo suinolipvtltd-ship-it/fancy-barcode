@@ -41,7 +41,7 @@ export default function LabelPreview({
                 key={el.type}
                 className="flex flex-1 items-center justify-center"
               >
-                <div className="flex gap-[1px]">
+                <div className="flex gap-px">
                   {Array.from({ length: 30 }).map((_, i) => (
                     <div
                       key={i}
@@ -54,6 +54,15 @@ export default function LabelPreview({
                   ))}
                 </div>
               </div>
+            );
+          case "barcodeNumber":
+            return (
+              <span
+                key={el.type}
+                className="text-[9px] text-gray-600"
+              >
+                1234567890
+              </span>
             );
           case "sku":
             return (

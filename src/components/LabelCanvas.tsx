@@ -28,6 +28,11 @@ const styles = StyleSheet.create({
   barcodeImage: {
     objectFit: "contain",
   },
+  barcodeNumber: {
+    fontSize: 5,
+    textAlign: "center",
+    width: "100%",
+  },
   sku: {
     fontSize: 5,
     textAlign: "center",
@@ -93,6 +98,12 @@ function renderElement(
           ]}
         />
       );
+    case "barcodeNumber":
+      return (
+        <Text key={key} style={styles.barcodeNumber}>
+          {record.barcodeValue}
+        </Text>
+      );
     case "sku":
       return (
         <Text key={key} style={styles.sku}>
@@ -116,6 +127,7 @@ function buildLegacyLayout(config: LabelConfig): LabelElement[] {
   if (config.includeProductName)
     elements.push({ type: "productName", visible: true });
   elements.push({ type: "barcode", visible: true });
+  elements.push({ type: "barcodeNumber", visible: true });
   if (config.includeSku) elements.push({ type: "sku", visible: true });
   elements.push({ type: "mrp", visible: true });
   return elements;

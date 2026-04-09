@@ -22,6 +22,7 @@ export const LEFT_MARGIN = 2.7;
 export const DEFAULT_LAYOUT: import("@/lib/types").LabelElement[] = [
   { type: "productName", visible: true },
   { type: "barcode", visible: true },
+  { type: "barcodeNumber", visible: true },
   { type: "sku", visible: true },
   { type: "mrp", visible: true },
 ];
