@@ -28,7 +28,6 @@ vi.mock("@react-pdf/renderer", () => ({
 }));
 
 import { generatePdf, PdfGenerationError } from "./pdfGenerator";
-import type { PdfGeneratorResult } from "./pdfGenerator";
 import { PAGE_WIDTH, LABEL_WIDTH, LABEL_HEIGHT, COLUMN_GAP, LEFT_MARGIN, DEFAULT_LAYOUT } from "./constants";
 
 function makeRecord(index: number): ProductRecord {
@@ -76,72 +75,62 @@ describe("pdfGenerator", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("creates a Document with a Page of correct width and computed height", async () => {
+  it("creates one Page per row with correct size", async () => {
     await generatePdf({ records: [makeRecord(1)], config: baseConfig });
     expect(capturedDoc).toBeDefined();
 
     const pages = findByType(capturedDoc, "Page");
     expect(pages).toHaveLength(1);
-
-    const page = pages[0];
-    // 1 record → 1 row → height = 1 * LABEL_HEIGHT
-    expect(page.props.size).toEqual({ width: PAGE_WIDTH, height: LABEL_HEIGHT });
+    expect(pages[0].props.size).toEqual({ width: PAGE_WIDTH, height: LABEL_HEIGHT });
   });
 
-  it("arranges 2 labels in a single row", async () => {
+  it("puts 2 labels on a single page (one row)", async () => {
     await generatePdf({
       records: [makeRecord(1), makeRecord(2)],
       config: baseConfig,
     });
 
     const pages = findByType(capturedDoc, "Page");
-    // The page's direct children are row Views
-    const pageChildren = pages[0].props.children;
-    const rows = Array.isArray(pageChildren) ? pageChildren : [pageChildren];
-    expect(rows).toHaveLength(1);
+    // 2 labels = 1 row = 1 page
+    expect(pages).toHaveLength(1);
+
+    // Page should have 2 children (left label + gap-wrapped right label)
+    const children = Array.isArray(pages[0].props.children)
+      ? pages[0].props.children.filter(Boolean)
+      : [pages[0].props.children].filter(Boolean);
+    expect(children).toHaveLength(2);
   });
 
-  it("arranges 3 labels in 2 rows (odd count handling)", async () => {
+  it("creates 2 pages for 3 labels (odd count)", async () => {
     await generatePdf({
       records: [makeRecord(1), makeRecord(2), makeRecord(3)],
       config: baseConfig,
     });
 
     const pages = findByType(capturedDoc, "Page");
-    const pageChildren = pages[0].props.children;
-    const rows = Array.isArray(pageChildren) ? pageChildren : [pageChildren];
-    expect(rows).toHaveLength(2);
+    expect(pages).toHaveLength(2);
   });
 
-  it("last row with odd count has only one label (left column)", async () => {
+  it("last page with odd count has only one label", async () => {
     await generatePdf({
       records: [makeRecord(1), makeRecord(2), makeRecord(3)],
       config: baseConfig,
     });
 
     const pages = findByType(capturedDoc, "Page");
-    const rows = pages[0].props.children;
-    const lastRow = rows[rows.length - 1];
-
-    // Last row children: LabelCanvas + false (conditional not rendered)
-    const children = Array.isArray(lastRow.props.children)
-      ? lastRow.props.children.filter(Boolean)
-      : [lastRow.props.children].filter(Boolean);
-    // Should have exactly 1 rendered child (the left label)
+    const lastPage = pages[pages.length - 1];
+    const children = Array.isArray(lastPage.props.children)
+      ? lastPage.props.children.filter(Boolean)
+      : [lastPage.props.children].filter(Boolean);
     expect(children).toHaveLength(1);
   });
 
-  it("applies LEFT_MARGIN to each row", async () => {
+  it("applies LEFT_MARGIN to each page", async () => {
     await generatePdf({ records: [makeRecord(1)], config: baseConfig });
 
     const pages = findByType(capturedDoc, "Page");
-    const rows = Array.isArray(pages[0].props.children)
-      ? pages[0].props.children
-      : [pages[0].props.children];
-
-    for (const row of rows) {
-      const style = row.props.style;
-      expect(style.marginLeft).toBe(LEFT_MARGIN);
+    for (const page of pages) {
+      expect(page.props.style.marginLeft).toBe(LEFT_MARGIN);
     }
   });
 
@@ -152,15 +141,9 @@ describe("pdfGenerator", () => {
     });
 
     const pages = findByType(capturedDoc, "Page");
-    const rows = Array.isArray(pages[0].props.children)
-      ? pages[0].props.children
-      : [pages[0].props.children];
-
-    // The second label is wrapped in a View with marginLeft = COLUMN_GAP
-    const row = rows[0];
-    const children = Array.isArray(row.props.children)
-      ? row.props.children.filter(Boolean)
-      : [row.props.children].filter(Boolean);
+    const children = Array.isArray(pages[0].props.children)
+      ? pages[0].props.children.filter(Boolean)
+      : [pages[0].props.children].filter(Boolean);
 
     // Second child is the gap wrapper View
     const gapWrapper = children[1];
@@ -184,15 +167,11 @@ describe("pdfGenerator", () => {
     expect(result.blob).toBeInstanceOf(Blob);
 
     const pages = findByType(capturedDoc, "Page");
-    const rows = Array.isArray(pages[0].props.children)
-      ? pages[0].props.children
-      : [pages[0].props.children];
-    expect(rows).toHaveLength(1);
+    expect(pages).toHaveLength(1);
   });
 
   it("skips records with invalid barcodes and returns warnings", async () => {
     const mockedValidate = vi.mocked(validateBarcodeValue);
-    // First record valid, second invalid, third valid
     mockedValidate
       .mockReturnValueOnce(true)
       .mockReturnValueOnce(false)
@@ -202,17 +181,13 @@ describe("pdfGenerator", () => {
     const result = await generatePdf({ records, config: baseConfig });
 
     expect(result.blob).toBeInstanceOf(Blob);
-
-    // Warning for row 2
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toBe(
       "Row 2: barcode value could not be encoded, skipped",
     );
 
-    // Only 2 valid records → 1 row in the PDF
+    // Only 2 valid records → 1 row → 1 page
     const pages = findByType(capturedDoc, "Page");
-    const pageChildren = pages[0].props.children;
-    const pdfRows = Array.isArray(pageChildren) ? pageChildren : [pageChildren];
-    expect(pdfRows).toHaveLength(1);
+    expect(pages).toHaveLength(1);
   });
 });

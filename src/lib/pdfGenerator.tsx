@@ -67,46 +67,37 @@ export async function generatePdf(
     rows.push(validRecords.slice(i, i + LABELS_PER_ROW));
   }
 
-  // Compute explicit page height to avoid react-pdf infinite pagination loop
-  // when only width is provided (known bug in @react-pdf/renderer v4.x with
-  // custom page sizes missing an explicit height).
-  const pageHeight = rows.length * LABEL_HEIGHT;
-
+  // Each row of labels gets its own page so every label pair prints on a
+  // separate sheet. Explicit height avoids the react-pdf v4.x infinite
+  // pagination bug with custom page sizes missing a height value.
   const doc = (
     <Document>
-      <Page
-        size={{ width: PAGE_WIDTH, height: pageHeight }}
-        style={{ flexDirection: "column" }}
-      >
-        {rows.map((row, rowIndex) => (
-          <View
-            key={rowIndex}
-            style={{
-              flexDirection: "row",
-              marginLeft: LEFT_MARGIN,
-            }}
-          >
-            <LabelCanvas
-              record={row[0]}
-              config={config}
-              widthPt={LABEL_WIDTH}
-              heightPt={LABEL_HEIGHT}
-              barcodeDataUrl={barcodeImages.get(row[0].barcodeValue)}
-            />
-            {row.length > 1 && (
-              <View style={{ marginLeft: COLUMN_GAP }}>
-                <LabelCanvas
-                  record={row[1]}
-                  config={config}
-                  widthPt={LABEL_WIDTH}
-                  heightPt={LABEL_HEIGHT}
-                  barcodeDataUrl={barcodeImages.get(row[1].barcodeValue)}
-                />
-              </View>
-            )}
-          </View>
-        ))}
-      </Page>
+      {rows.map((row, rowIndex) => (
+        <Page
+          key={rowIndex}
+          size={{ width: PAGE_WIDTH, height: LABEL_HEIGHT }}
+          style={{ flexDirection: "row", marginLeft: LEFT_MARGIN }}
+        >
+          <LabelCanvas
+            record={row[0]}
+            config={config}
+            widthPt={LABEL_WIDTH}
+            heightPt={LABEL_HEIGHT}
+            barcodeDataUrl={barcodeImages.get(row[0].barcodeValue)}
+          />
+          {row.length > 1 && (
+            <View style={{ marginLeft: COLUMN_GAP }}>
+              <LabelCanvas
+                record={row[1]}
+                config={config}
+                widthPt={LABEL_WIDTH}
+                heightPt={LABEL_HEIGHT}
+                barcodeDataUrl={barcodeImages.get(row[1].barcodeValue)}
+              />
+            </View>
+          )}
+        </Page>
+      ))}
     </Document>
   );
 
