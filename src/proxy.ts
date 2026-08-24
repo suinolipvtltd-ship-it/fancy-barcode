@@ -25,10 +25,15 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Refresh the session (important — keeps tokens alive)
+  // Read the session locally from cookies. `getUser()` issues a network
+  // request to Supabase Auth on every request, which can exceed Netlify's
+  // Edge Function execution limit and crash with "the edge function timed
+  // out" whenever the Auth endpoint is slow or unreachable. `getSession()`
+  // performs no network I/O, so the proxy never hangs on that call.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // Redirect unauthenticated users away from protected routes
   const isLoginPage = request.nextUrl.pathname === "/login";

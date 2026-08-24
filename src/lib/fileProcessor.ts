@@ -2,10 +2,7 @@ import * as XLSX from "xlsx";
 import type { ProductRecord, ParseResult } from "@/lib/types";
 
 /** Columns that must always be present */
-const REQUIRED_COLUMNS = ["Product Name", "SKU", "MRP"] as const;
-
-/** Starting value for auto-generated barcode numbers */
-const AUTO_BARCODE_START = 10000001;
+const REQUIRED_COLUMNS = ["Product", "Barcode", "Unit Price"] as const;
 
 /**
  * Returns true if the file extension is .xlsx or .csv (case-insensitive).
@@ -17,8 +14,10 @@ export function validateFileExtension(fileName: string): boolean {
 
 /**
  * Parses an uploaded .xlsx or .csv file into an array of ProductRecords.
- * Validates required columns. If "Barcode Value" column is missing,
- * sequential barcode numbers are generated automatically.
+ * Validates required columns: Product, Barcode, Unit Price.
+ * SKU is optional — if missing, it defaults to an empty string.
+ * Only the columns Product, Barcode, Unit Price, and SKU are read;
+ * all other columns are ignored.
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const records: ProductRecord[] = [];
@@ -72,37 +71,24 @@ export async function parseFile(file: File): Promise<ParseResult> {
     };
   }
 
-  const hasBarcodeColumn = headers.includes("Barcode Value");
-
-  if (!hasBarcodeColumn) {
-    warnings.push(
-      "\"Barcode Value\" column not found — barcode numbers will be generated automatically.",
-    );
-  }
-
-  let autoCounter = AUTO_BARCODE_START;
+  const hasSkuColumn = headers.includes("SKU");
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNumber = i + 2; // row 1 is the header
 
-    let barcodeValue: string;
-
-    if (hasBarcodeColumn) {
-      barcodeValue = String(row["Barcode Value"] ?? "").trim();
-      if (!barcodeValue) {
-        warnings.push(`Row ${rowNumber}: empty Barcode Value, skipped`);
-        continue;
-      }
-    } else {
-      // Auto-generate sequential barcode number
-      barcodeValue = String(autoCounter++);
+    const barcodeValue = String(row["Barcode"] ?? "").trim();
+    if (!barcodeValue) {
+      warnings.push(`Row ${rowNumber}: empty Barcode, skipped`);
+      continue;
     }
 
+    const sku = hasSkuColumn ? String(row["SKU"] ?? "").trim() : "";
+
     records.push({
-      productName: String(row["Product Name"] ?? "").trim(),
-      sku: String(row["SKU"] ?? "").trim(),
-      mrp: String(row["MRP"] ?? "").trim(),
+      productName: String(row["Product"] ?? "").trim(),
+      sku,
+      mrp: String(row["Unit Price"] ?? "").trim(),
       barcodeValue,
       rowNumber,
     });

@@ -45,10 +45,10 @@ describe("parseFile", () => {
   it("parses a valid xlsx file with all required columns", async () => {
     const file = createXlsxFile([
       {
-        "Product Name": "Widget",
+        Product: "Widget",
         SKU: "W-001",
-        MRP: "9.99",
-        "Barcode Value": "1234567890",
+        "Unit Price": "9.99",
+        Barcode: "1234567890",
       },
     ]);
 
@@ -68,7 +68,7 @@ describe("parseFile", () => {
 
   it("parses a CSV file", async () => {
     const csv =
-      "Product Name,SKU,MRP,Barcode Value\nGadget,G-001,19.99,9876543210";
+      "Product,Barcode,Unit Price,SKU\nGadget,9876543210,19.99,G-001";
     const file = createCsvFile(csv);
 
     const result = await parseFile(file);
@@ -79,34 +79,31 @@ describe("parseFile", () => {
   });
 
   it("returns errors for missing columns", async () => {
-    const file = createXlsxFile([{ "Product Name": "Widget", SKU: "W-001" }]);
+    const file = createXlsxFile([{ Product: "Widget", Barcode: "111" }]);
 
     const result = await parseFile(file);
 
     expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain("MRP");
+    expect(result.errors[0]).toContain("Unit Price");
     expect(result.records).toHaveLength(0);
   });
 
-  it("skips rows with empty Barcode Value and adds warnings", async () => {
+  it("skips rows with empty Barcode and adds warnings", async () => {
     const file = createXlsxFile([
       {
-        "Product Name": "A",
-        SKU: "A-1",
-        MRP: "1",
-        "Barcode Value": "111",
+        Product: "A",
+        Barcode: "111",
+        "Unit Price": "1",
       },
       {
-        "Product Name": "B",
-        SKU: "B-1",
-        MRP: "2",
-        "Barcode Value": "",
+        Product: "B",
+        Barcode: "",
+        "Unit Price": "2",
       },
       {
-        "Product Name": "C",
-        SKU: "C-1",
-        MRP: "3",
-        "Barcode Value": "333",
+        Product: "C",
+        Barcode: "333",
+        "Unit Price": "3",
       },
     ]);
 
@@ -120,10 +117,9 @@ describe("parseFile", () => {
   it("returns error when zero valid rows remain", async () => {
     const file = createXlsxFile([
       {
-        "Product Name": "A",
-        SKU: "A-1",
-        MRP: "1",
-        "Barcode Value": "",
+        Product: "A",
+        Barcode: "",
+        "Unit Price": "1",
       },
     ]);
 
@@ -134,18 +130,17 @@ describe("parseFile", () => {
     expect(result.errors[0]).toContain("No valid product data");
   });
 
-  it("auto-generates sequential barcode numbers when Barcode Value column is missing", async () => {
+  it("allows SKU to be optional — defaults to empty string", async () => {
     const file = createXlsxFile([
-      { "Product Name": "A", SKU: "A-1", MRP: "10" },
-      { "Product Name": "B", SKU: "B-1", MRP: "20" },
+      { Product: "A", Barcode: "111", "Unit Price": "10", SKU: "" },
+      { Product: "B", Barcode: "222", "Unit Price": "20", SKU: "B-1" },
     ]);
 
     const result = await parseFile(file);
 
     expect(result.errors).toHaveLength(0);
     expect(result.records).toHaveLength(2);
-    expect(result.records[0].barcodeValue).toBe("10000001");
-    expect(result.records[1].barcodeValue).toBe("10000002");
-    expect(result.warnings.some((w) => w.includes("generated automatically"))).toBe(true);
+    expect(result.records[0].sku).toBe("");
+    expect(result.records[1].sku).toBe("B-1");
   });
 });
