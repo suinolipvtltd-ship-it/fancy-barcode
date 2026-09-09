@@ -1,15 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST, GET } from "./route";
+import { getSessionUser } from "@/lib/auth";
 
 const mockSql = vi.fn();
+const mockGetSessionUser = vi.mocked(getSessionUser);
 
 vi.mock("@/lib/db", () => ({
   getDb: () => mockSql,
 }));
 
+vi.mock("@/lib/auth", () => ({
+  getSessionUser: vi.fn(),
+}));
+
 describe("POST /api/jobs", () => {
   beforeEach(() => {
     mockSql.mockReset();
+    mockGetSessionUser.mockReset();
+    mockGetSessionUser.mockResolvedValue({ id: "user-1", email: "a@b.com" });
   });
 
   it("creates a job and returns 201 with JobRecord", async () => {
@@ -58,6 +66,22 @@ describe("POST /api/jobs", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 401 when unauthenticated", async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const request = new Request("http://localhost/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: "test.xlsx", rowCount: 5 }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe("Unauthorized");
+  });
+
   it("returns 500 with warning on database error", async () => {
     mockSql.mockRejectedValue(new Error("DB connection failed"));
 
@@ -78,6 +102,8 @@ describe("POST /api/jobs", () => {
 describe("GET /api/jobs", () => {
   beforeEach(() => {
     mockSql.mockReset();
+    mockGetSessionUser.mockReset();
+    mockGetSessionUser.mockResolvedValue({ id: "user-1", email: "a@b.com" });
   });
 
   it("returns jobs ordered by created_at DESC", async () => {
@@ -95,6 +121,16 @@ describe("GET /api/jobs", () => {
     expect(data).toHaveLength(2);
     expect(data[0].fileName).toBe("recent.xlsx");
     expect(data[1].fileName).toBe("older.csv");
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    mockGetSessionUser.mockResolvedValue(null);
+
+    const response = await GET();
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe("Unauthorized");
   });
 
   it("returns empty array with message on database error", async () => {

@@ -1,56 +1,31 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE } from "@/lib/constants";
+import { getUserIdFromToken } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
-
-  // Read the session locally from cookies. `getUser()` issues a network
-  // request to Supabase Auth on every request, which can exceed Netlify's
-  // Edge Function execution limit and crash with "the edge function timed
-  // out" whenever the Auth endpoint is slow or unreachable. `getSession()`
-  // performs no network I/O, so the proxy never hangs on that call.
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  // Verify the session token's signature and expiry here (no DB lookup, so
+  // this stays cheap enough for the edge proxy). The full check — loading the
+  // user from the database — happens in `getSessionUser()` in server
+  // components and route handlers.
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const userId = token ? await getUserIdFromToken(token) : null;
+  const isLoginPage = request.nextUrl.pathname === "/login";
 
   // Redirect unauthenticated users away from protected routes
-  const isLoginPage = request.nextUrl.pathname === "/login";
-  if (!user && !isLoginPage) {
+  if (!userId && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login page
-  if (user && isLoginPage) {
+  // Redirect authenticated users away from the login page
+  if (userId && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next({ request });
 }
 
 export const config = {
