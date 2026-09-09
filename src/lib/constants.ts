@@ -27,3 +27,6 @@ export const DEFAULT_LAYOUT: import("@/lib/types").LabelElement[] = [
   { type: "sku", visible: false },
   { type: "mrp", visible: false },
 ];
+
+/** Name of the httpOnly session cookie used for authentication. */
+export const SESSION_COOKIE = "session";

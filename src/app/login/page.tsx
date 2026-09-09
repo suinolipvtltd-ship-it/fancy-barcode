@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { signIn, signUp } from "@/app/actions/auth";
 
-type Mode = "signIn" | "signUp" | "forgotPassword";
+type Mode = "signIn" | "signUp";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,43 +12,27 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("signIn");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
-
-  const resetState = () => {
-    setError(null);
-    setMessage(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setMessage(null);
     setLoading(true);
 
     try {
-      if (mode === "signUp") {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setMessage("Check your email for a confirmation link.");
-      } else if (mode === "forgotPassword") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/update-password`,
-        });
-        if (error) throw error;
-        setMessage("Check your email for a password reset link.");
+      const result =
+        mode === "signUp"
+          ? await signUp(email, password)
+          : await signIn(email, password);
+
+      if (result.error) {
+        setError(result.error);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
         router.push("/");
         router.refresh();
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -57,23 +41,15 @@ export default function LoginPage() {
   const switchTo = (next: Mode) => {
     setMode(next);
     setError(null);
-    setMessage(null);
   };
 
-  const title =
-    mode === "signUp"
-      ? "Create Account"
-      : mode === "forgotPassword"
-        ? "Reset Password"
-        : "Sign In";
+  const title = mode === "signUp" ? "Create Account" : "Sign In";
 
   const buttonLabel = loading
     ? "Please wait…"
     : mode === "signUp"
       ? "Sign Up"
-      : mode === "forgotPassword"
-        ? "Send Reset Link"
-        : "Sign In";
+      : "Sign In";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -97,25 +73,22 @@ export default function LoginPage() {
             />
           </div>
 
-          {mode !== "forgotPassword" && (
-            <div>
-              <label htmlFor="password" className="block text-sm text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          )}
+          <div>
+            <label htmlFor="password" className="block text-sm text-gray-700">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {message && <p className="text-sm text-green-600">{message}</p>}
 
           <button
             type="submit"
@@ -127,48 +100,19 @@ export default function LoginPage() {
         </form>
 
         {/* Footer links */}
-        <div className="mt-4 space-y-2 text-center text-sm text-gray-500">
-          {/* Forgot password link — only in sign-in mode */}
-          {mode === "signIn" && (
-            <p>
-              <button
-                type="button"
-                onClick={() => switchTo("forgotPassword")}
-                className="text-blue-600 hover:underline"
-              >
-                Forgot password?
-              </button>
-            </p>
-          )}
-
-          {/* Back to sign in — in forgot-password and sign-up modes */}
-          {mode !== "signIn" && (
-            <p>
-              <button
-                type="button"
-                onClick={() => switchTo("signIn")}
-                className="text-blue-600 hover:underline"
-              >
-                Back to Sign In
-              </button>
-            </p>
-          )}
-
-          {/* Sign up / sign in toggle */}
-          {mode !== "forgotPassword" && (
-            <p>
-              {mode === "signIn"
-                ? "Don't have an account?"
-                : "Already have an account?"}{" "}
-              <button
-                type="button"
-                onClick={() => switchTo(mode === "signIn" ? "signUp" : "signIn")}
-                className="text-blue-600 hover:underline"
-              >
-                {mode === "signIn" ? "Sign Up" : "Sign In"}
-              </button>
-            </p>
-          )}
+        <div className="mt-4 text-center text-sm text-gray-500">
+          <p>
+            {mode === "signIn"
+              ? "Don't have an account?"
+              : "Already have an account?"}{" "}
+            <button
+              type="button"
+              onClick={() => switchTo(mode === "signIn" ? "signUp" : "signIn")}
+              className="text-blue-600 hover:underline"
+            >
+              {mode === "signIn" ? "Sign Up" : "Sign In"}
+            </button>
+          </p>
         </div>
       </div>
     </div>
