@@ -1,23 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/constants";
+import { getUserIdFromToken } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
-  // The proxy only checks for the presence of the session cookie to avoid
-  // network/database work on every request. Real verification (HMAC signature,
-  // expiry, and DB lookup) happens in `getSessionUser()`, which runs in server
-  // components like Navbar on the Node runtime.
-  const hasSession = request.cookies.has(SESSION_COOKIE);
+  // Verify the session token's signature and expiry here (no DB lookup, so
+  // this stays cheap enough for the edge proxy). The full check — loading the
+  // user from the database — happens in `getSessionUser()` in server
+  // components and route handlers.
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const userId = token ? await getUserIdFromToken(token) : null;
   const isLoginPage = request.nextUrl.pathname === "/login";
 
   // Redirect unauthenticated users away from protected routes
-  if (!hasSession && !isLoginPage) {
+  if (!userId && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // Redirect authenticated users away from the login page
-  if (hasSession && isLoginPage) {
+  if (userId && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

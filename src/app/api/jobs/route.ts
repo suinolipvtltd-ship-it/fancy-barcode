@@ -1,9 +1,15 @@
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import type { CreateJobRequest, JobRecord } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = (await request.json()) as CreateJobRequest;
 
@@ -46,6 +52,11 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  const user = await getSessionUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const sql = getDb();
     const rows = await sql`
