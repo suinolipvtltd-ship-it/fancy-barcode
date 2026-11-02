@@ -72,6 +72,7 @@ describe("POST /api/sales", () => {
       {
         sku: "DRS-1024",
         name: "Red Party Dress",
+        size: null,
         qty: 2,
         stockQty: 3,
         lowStockThreshold: 3,

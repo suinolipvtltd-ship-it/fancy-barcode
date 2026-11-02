@@ -11,6 +11,8 @@
 export interface ReminderItem {
   sku?: string | null;
   name?: string | null;
+  /** Size bought, e.g. "M" or "2-3Y". */
+  size?: string | null;
   qty?: number | null;
 }
 
@@ -96,7 +98,11 @@ export function buildReminderEvent(input: ReminderInput): ReminderEvent {
     lines.push("Items:");
     for (const item of items) {
       const qty = item.qty ?? 1;
-      const label = [item.name, item.sku ? `(${item.sku})` : null]
+      const label = [
+        item.name,
+        item.sku ? `(${item.sku})` : null,
+        item.size ? `Size ${item.size}` : null,
+      ]
         .filter(Boolean)
         .join(" ");
       lines.push(`• ${label} × ${qty}`);

@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 const MAX_ITEMS = 200;
 const MAX_SKU_LENGTH = 128;
 const MAX_NAME_LENGTH = 255;
+const MAX_SIZE_LENGTH = 32;
 const MAX_PHONE_LENGTH = 32;
 
 type Sql = ReturnType<typeof getDb>;
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
   const items = body.items.slice(0, MAX_ITEMS).map((item) => ({
     sku: item.sku ? normalizeSku(item.sku).slice(0, MAX_SKU_LENGTH) : null,
     name: clean(item.name, MAX_NAME_LENGTH),
+    size: clean(item.size, MAX_SIZE_LENGTH),
     qty: parseQty(item.qty),
     unitPrice:
       typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice)
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
         itemStocks.push({
           sku: item.sku,
           name: item.name,
+          size: item.size,
           qty: item.qty,
           stockQty,
           lowStockThreshold: threshold,
@@ -190,8 +193,8 @@ export async function POST(request: Request) {
     const itemStocks: SaleItemStock[] = [];
     for (const item of items) {
       await sql`
-        INSERT INTO sale_items (sale_id, sku, product_name, qty, unit_price)
-        VALUES (${saleId}, ${item.sku}, ${item.name}, ${item.qty}, ${item.unitPrice})
+        INSERT INTO sale_items (sale_id, sku, product_name, size, qty, unit_price)
+        VALUES (${saleId}, ${item.sku}, ${item.name}, ${item.size}, ${item.qty}, ${item.unitPrice})
       `;
 
       let stockQty: number | null = null;
@@ -219,6 +222,7 @@ export async function POST(request: Request) {
       itemStocks.push({
         sku: item.sku,
         name: item.name,
+        size: item.size,
         qty: item.qty,
         stockQty,
         lowStockThreshold: threshold,

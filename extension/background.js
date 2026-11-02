@@ -5,7 +5,7 @@ import {
   saveCalendarEvent,
   ApiError,
 } from './lib/api.js';
-import { connectGoogle, createAllDayEvent } from './lib/calendar.js';
+import { connectGoogle, createAllDayEvent, buildGoogleCalendarUrl } from './lib/calendar.js';
 import { buildReminderLocal } from './lib/dates.js';
 import { normalizeSku } from './lib/sku.js';
 import {
@@ -88,6 +88,13 @@ async function attemptSale(sale) {
       outcome.calendar = await bookReminder(apiResult.saleId, reminder, settings);
     } catch (e) {
       outcome.calendarError = e.message;
+      // Google sign-in is not set up (or expired). Hand the user a pre-filled
+      // Google Calendar link so the reminder can still be saved in one click.
+      outcome.calendarUrl = buildGoogleCalendarUrl({
+        date: reminder.date,
+        title: reminder.title,
+        description: reminder.description,
+      });
       await enqueue({ kind: 'calendar', saleId: apiResult.saleId, reminder });
     }
   }
@@ -101,6 +108,7 @@ async function attemptSale(sale) {
     duplicate: outcome.duplicate,
     calendarDate: outcome.calendar?.date || reminder.date,
     calendarLink: outcome.calendar?.htmlLink || null,
+    calendarUrl: outcome.calendarUrl || null,
     calendarError: outcome.calendarError,
   });
 

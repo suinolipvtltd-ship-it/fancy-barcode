@@ -120,6 +120,22 @@ async function findExistingEvent(token, saleId) {
 }
 
 /**
+ * Google Calendar "add event" template link. Needs no OAuth client and no
+ * consent screen, so a reminder can still be booked by hand when
+ * chrome.identity is not configured.
+ */
+export function buildGoogleCalendarUrl({ date, title, description = '' }) {
+  const compact = (value) => String(value).replace(/-/g, '');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title || 'Fancy Barcode reminder',
+    dates: `${compact(date)}/${compact(nextDay(date))}`,
+    details: description || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
  * Creates an all-day event on the user's primary calendar.
  * Uses an extended property so a duplicate request can be spotted later.
  */

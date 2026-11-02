@@ -131,3 +131,21 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens (user_id);
+
+-- ---------------------------------------------------------------------------
+-- Reminder admin (added after the extension shipped) — safe to re-run.
+-- ---------------------------------------------------------------------------
+
+-- Size sold for a line item (e.g. "M", "2-3Y"). Products already have `size`;
+-- this captures what the customer actually bought.
+ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS size VARCHAR(32);
+
+-- Set when an admin removes a reminder from the app. The row is kept so the
+-- sale history stays intact; the API simply stops returning it.
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date
+  ON calendar_events (event_date);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_open
+  ON calendar_events (event_date) WHERE dismissed_at IS NULL;

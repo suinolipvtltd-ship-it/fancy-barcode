@@ -80,7 +80,7 @@
 
   function hashDraft(draft) {
     const items = (draft.items || [])
-      .map((item) => `${item.sku || item.name}:${item.qty}`)
+      .map((item) => `${item.sku || item.name}:${item.size || ''}:${item.qty}`)
       .join(',');
     return [draft.externalId, draft.customer?.name, draft.customer?.phone, draft.totalAmount, items]
       .map((part) => norm(part))
@@ -199,6 +199,16 @@
     };
   }
 
+  // Size / age band, e.g. M, XL, 2-3Y, 5 years, Free Size.
+  const SIZE_TOKEN = /\b(?:xxs|xs|s|m|l|xl|xxl|xxxl|free\s?size|newborn|\d{1,2}\s?-\s?\d{1,2}\s?(?:y|yr|yrs|years?)|\d{1,2}\s?(?:y|yr|yrs|years?))\b/i;
+
+  /** Falls back to the trailing size in a product name like "Frock - 2-3Y". */
+  function guessSize(name) {
+    if (!name) return null;
+    const match = String(name).match(SIZE_TOKEN);
+    return match ? norm(match[0]).toUpperCase() : null;
+  }
+
   function extractItems() {
     const items = [];
     const skipName = /^(total|sub-total|subtotal|tax|cgst|sgst|igst|discount|round ?off|amount|balance)$/i;
@@ -217,6 +227,7 @@
       const qtyIdx = findIdx(['qty', 'quantity', 'units', 'pcs']);
       const priceIdx = findIdx(['rate', 'price', 'amount', 'mrp', 'total']);
       const skuIdx = findIdx(['sku', 'code', 'barcode', 'hsn']);
+      const sizeIdx = findIdx(['size', 'sizes', 'variant', 'fit']);
 
       if (nameIdx === -1) continue;
 
@@ -230,19 +241,21 @@
         const qty = qtyIdx >= 0 ? parseQty(cells[qtyIdx]) : 1;
         const unitPrice = priceIdx >= 0 ? toNumber(cells[priceIdx]) : null;
         const sku = skuIdx >= 0 ? cells[skuIdx] || null : null;
+        const size =
+          (sizeIdx >= 0 ? cells[sizeIdx] || null : null) || guessSize(name);
 
         if (qtyIdx < 0 && unitPrice === null) continue; // header/empty row
         if (name.length > 120) continue;
 
-        items.push({ name, sku, qty, unitPrice });
+        items.push({ name, sku, size, qty, unitPrice });
         if (items.length >= 50) break;
       }
     }
 
-    // De-duplicate identical name+sku+qty rows produced by nested tables.
+    // De-duplicate identical name+sku+size+qty rows produced by nested tables.
     const seen = new Set();
     return items.filter((item) => {
-      const key = `${lower(item.name)}|${item.sku || ''}|${item.qty}`;
+      const key = `${lower(item.name)}|${item.sku || ''}|${item.size || ''}|${item.qty}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -668,7 +681,20 @@
     save.textContent = 'Record selected';
     save.disabled = entries.every((entry) => entry.recorded);
 
-    footer.append(cancel, save);
+    // Bulk sync: ticking every row on the page is the "sync all sales" path.
+    const selectAll = document.createElement('button');
+    selectAll.type = 'button';
+    selectAll.className = 'fb-small';
+    selectAll.textContent = 'Select all';
+    selectAll.addEventListener('click', () => {
+      const selectable = entries.filter((entry) => !entry.recorded);
+      const allChecked = selectable.length > 0 && selectable.every((entry) => entry.box.checked);
+      for (const entry of selectable) entry.box.checked = !allChecked;
+      selectAll.textContent = allChecked ? 'Select all' : 'Clear selection';
+      save.disabled = selectable.length === 0;
+    });
+
+    footer.append(selectAll, cancel, save);
     card.append(title, hint, list, footer, result);
 
     card.addEventListener('submit', async (event) => {
@@ -806,7 +832,7 @@
     }
     .fb-items { margin: 4px 0 8px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
     .fb-items-head, .fb-item-row {
-      display: grid; grid-template-columns: 1fr 96px 56px 24px; gap: 6px;
+      display: grid; grid-template-columns: 1fr 84px 56px 48px 24px; gap: 6px;
       align-items: center; padding: 6px 8px;
     }
     .fb-items-head { background: #f9fafb; font-size: 10px; text-transform: uppercase; color: #6b7280; }
@@ -818,6 +844,7 @@
     .fb-remove { border: 0 !important; background: transparent !important; color: #9ca3af; padding: 2px !important; }
     .fb-small { font-size: 11px !important; padding: 6px 8px !important; }
     .fb-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .fb-footer .fb-small { margin-right: auto; }
     .fb-result { margin-top: 12px; font-size: 12px; line-height: 1.5; color: #374151; }
     .fb-result a { color: #1d4ed8; }
     .fb-list {
@@ -881,11 +908,14 @@
     panel.hidden = !panel.hidden;
   });
 
-  panel.addEventListener('click', (event) => {
-    const action = event.target?.dataset?.action;
-    if (!action) return;
-
+  /**
+   * Runs a panel action. Shared by the floating panel and by the toolbar popup
+   * (which sends an OPEN_CAPTURE message) so both behave identically.
+   */
+  function runAction(action) {
     if (action === 'capture' || action === 'list') {
+      panel.hidden = false;
+
       // On the sales list there is no single invoice to scrape — recording the
       // whole page would mix up totals and customers, so pick from the rows.
       if (onSalesListPage()) {
@@ -898,22 +928,37 @@
         } else {
           openListModal(rows);
         }
-        return;
+        return true;
       }
 
       if (action === 'list') {
         setStatus('Open the Swipe Sales list first — this button reads that table.', 'warn');
-        return;
+        return true;
       }
 
       openModal(buildDraft());
-    } else if (action === 'scan') {
+      return true;
+    }
+
+    if (action === 'scan') {
       sendMessage({ type: 'OPEN_SCANNER' });
-    } else if (action === 'options') {
+      return true;
+    }
+
+    if (action === 'options') {
       sendMessage({ type: 'OPEN_OPTIONS' }).then((response) => {
         if (response?.ok) setStatus('Settings opened in a new tab.');
       });
+      return true;
     }
+
+    return false;
+  }
+
+  panel.addEventListener('click', (event) => {
+    const action = event.target?.dataset?.action;
+    if (!action) return;
+    runAction(action);
   });
 
   function sendMessage(message) {
@@ -985,7 +1030,7 @@
 
     const itemsHead = document.createElement('div');
     itemsHead.className = 'fb-items-head';
-    itemsHead.innerHTML = '<span>Item</span><span>SKU</span><span>Qty</span>';
+    itemsHead.innerHTML = '<span>Item</span><span>SKU</span><span>Size</span><span>Qty</span>';
     itemsBox.appendChild(itemsHead);
 
     const rows = [];
@@ -1002,6 +1047,10 @@
       sku.placeholder = 'SKU';
       sku.value = item.sku || '';
 
+      const size = document.createElement('input');
+      size.placeholder = 'Size';
+      size.value = item.size || '';
+
       const qty = document.createElement('input');
       qty.type = 'number';
       qty.min = '1';
@@ -1013,13 +1062,13 @@
       remove.textContent = '✕';
       remove.title = 'Remove item';
 
-      const entry = { row, itemName, sku, qty };
+      const entry = { row, itemName, sku, size, qty };
       remove.addEventListener('click', () => {
         rows.splice(rows.indexOf(entry), 1);
         row.remove();
       });
 
-      row.append(itemName, sku, qty, remove);
+      row.append(itemName, sku, size, qty, remove);
       itemsBox.appendChild(row);
       rows.push(entry);
     }
@@ -1077,6 +1126,7 @@
         .map((entry) => ({
           name: norm(entry.itemName.value) || null,
           sku: norm(entry.sku.value).toUpperCase() || null,
+          size: norm(entry.size.value).toUpperCase() || null,
           qty: parseQty(entry.qty.value),
         }))
         .filter((item) => item.name || item.sku);
@@ -1177,6 +1227,17 @@
       container.appendChild(document.createElement('br'));
       container.appendChild(link);
     }
+
+    // Shown when Google sign-in is unavailable — one click saves the reminder.
+    if (response.calendarUrl) {
+      const link = document.createElement('a');
+      link.href = response.calendarUrl;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Add to Google Calendar';
+      container.appendChild(document.createElement('br'));
+      container.appendChild(link);
+    }
   }
 
   /* ------------------------------- detection ------------------------------ */
@@ -1267,6 +1328,14 @@
     };
   }
   window.addEventListener('popstate', scheduleUrlCheck);
+
+  // Lets the toolbar popup open the capture dialog on the active tab, which
+  // also proves the page assistant is actually injected here.
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== 'OPEN_CAPTURE') return false;
+    sendResponse({ ok: runAction('capture') });
+    return false;
+  });
 
   loadSettings();
   startObserver();

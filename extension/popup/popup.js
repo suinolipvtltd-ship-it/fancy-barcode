@@ -77,6 +77,38 @@ async function refresh() {
   renderRecent(status.recent);
 }
 
+function activeTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      resolve(tabs?.[0] || null);
+    });
+  });
+}
+
+$('capture').addEventListener('click', async () => {
+  const message = $('message');
+  const tab = await activeTab();
+
+  if (!tab?.id) {
+    message.textContent = 'No active tab.';
+    return;
+  }
+
+  if (!/^https:\/\/app\.getswipe\.in\//.test(tab.url || '')) {
+    message.textContent = 'Open a Swipe page (app.getswipe.in) first.';
+    return;
+  }
+
+  chrome.tabs.sendMessage(tab.id, { type: 'OPEN_CAPTURE' }, (response) => {
+    if (chrome.runtime.lastError || !response?.ok) {
+      message.textContent =
+        'Page assistant not loaded — reload the extension, then refresh this Swipe tab.';
+      return;
+    }
+    window.close();
+  });
+});
+
 $('scan').addEventListener('click', async () => {
   await send({ type: 'OPEN_SCANNER' });
   window.close();

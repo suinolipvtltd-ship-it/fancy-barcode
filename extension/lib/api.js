@@ -47,8 +47,14 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
   }
 
   if (!response.ok) {
-    const message = data?.error || `Request failed (HTTP ${response.status})`;
-    throw new ApiError(message, response.status, data);
+    // Include the exact request so a 404 points straight at the wrong host or
+    // a deployment that predates the route.
+    const detail = data?.error || `HTTP ${response.status}`;
+    throw new ApiError(
+      `${detail} — ${method} ${base}${path}`,
+      response.status,
+      data,
+    );
   }
 
   return data;

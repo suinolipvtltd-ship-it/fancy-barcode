@@ -75,6 +75,8 @@ export interface CreateSaleRequest {
   items: {
     sku?: string;
     name?: string;
+    /** Size bought, e.g. "M" or "2-3Y". */
+    size?: string | null;
     qty?: number;
     unitPrice?: number;
   }[];
@@ -86,6 +88,7 @@ export interface CreateSaleRequest {
 export interface SaleItemStock {
   sku: string | null;
   name: string | null;
+  size: string | null;
   qty: number;
   stockQty: number | null;
   lowStockThreshold: number | null;
@@ -114,4 +117,28 @@ export interface SaveCalendarEventRequest {
   eventDate: string;
   htmlLink?: string;
   calendarId?: string;
+}
+
+/** One line item as shown in the admin reminder list */
+export interface ReminderSaleItem {
+  name: string | null;
+  size: string | null;
+  qty: number;
+  sku: string | null;
+}
+
+/** A reminder (calendar event) joined with the sale and customer behind it */
+export interface ReminderRecord {
+  /** calendar_events.id */
+  id: string;
+  saleId: string;
+  /** All-day event date, YYYY-MM-DD */
+  eventDate: string;
+  googleEventId: string | null;
+  htmlLink: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  totalAmount: string | null;
+  soldAt: string;
+  items: ReminderSaleItem[];
 }
