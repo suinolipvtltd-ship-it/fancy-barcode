@@ -121,11 +121,16 @@ export interface SaveCalendarEventRequest {
 
 /** One line item as shown in the admin reminder list */
 export interface ReminderSaleItem {
+  /** sale_items.id — null for a row the admin has not saved yet */
+  id: string | null;
   name: string | null;
   size: string | null;
   qty: number;
   sku: string | null;
 }
+
+/** Who the order was for */
+export type ChildGender = "girl" | "boy";
 
 /** A reminder (calendar event) joined with the sale and customer behind it */
 export interface ReminderRecord {
@@ -140,5 +145,21 @@ export interface ReminderRecord {
   customerPhone: string | null;
   totalAmount: string | null;
   soldAt: string;
+  childGender: ChildGender | null;
+  childAgeYears: number | null;
   items: ReminderSaleItem[];
+}
+
+/** PATCH /api/reminders request body */
+export interface UpdateReminderRequest {
+  id: string;
+  childGender?: ChildGender | null;
+  childAgeYears?: number | null;
+  items?: {
+    id?: string | null;
+    name?: string | null;
+    size?: string | null;
+    sku?: string | null;
+    qty?: number;
+  }[];
 }

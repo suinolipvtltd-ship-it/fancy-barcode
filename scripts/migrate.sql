@@ -144,6 +144,11 @@ ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS size VARCHAR(32);
 -- sale history stays intact; the API simply stops returning it.
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMPTZ;
 
+-- Who the order was for: 'girl' | 'boy' | NULL (unknown). Age is at the time
+-- of purchase, in whole years.
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS child_gender VARCHAR(16);
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS child_age_years SMALLINT;
+
 CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date
   ON calendar_events (event_date);
 

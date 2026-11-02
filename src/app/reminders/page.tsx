@@ -15,8 +15,10 @@ export default async function RemindersPage() {
   if (!user) redirect("/login");
 
   const now = new Date();
-  const from = day(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
-  const to = day(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 18, 0)));
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [year, monthIndex] = month.split("-").map(Number);
+  const from = day(new Date(Date.UTC(year, monthIndex - 1, 1)));
+  const to = day(new Date(Date.UTC(year, monthIndex, 0)));
 
   let reminders: ReminderRecord[] = [];
   let error: string | null = null;
@@ -29,11 +31,12 @@ export default async function RemindersPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8">
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">Reminders</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Birthday follow-ups booked from Swipe sales — customer, phone, product and size.
+          Birthday follow-ups booked from Swipe sales — customer, phone, product, size,
+          and who the order was for.
         </p>
       </header>
 
@@ -42,7 +45,7 @@ export default async function RemindersPage() {
           {error}
         </p>
       ) : (
-        <ReminderCalendar initial={reminders} from={from} to={to} />
+        <ReminderCalendar initial={reminders} initialMonth={month} />
       )}
     </main>
   );
