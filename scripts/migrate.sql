@@ -149,3 +149,13 @@ CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date
 
 CREATE INDEX IF NOT EXISTS idx_calendar_events_open
   ON calendar_events (event_date) WHERE dismissed_at IS NULL;
+
+-- Backfill reminders for sales recorded before the API started storing them
+-- eagerly (when only a successful Google booking created the row).
+INSERT INTO calendar_events (sale_id, event_date)
+SELECT s.id, (s.sold_at + INTERVAL '1 year')::date
+FROM sales s
+WHERE NOT EXISTS (
+  SELECT 1 FROM calendar_events ce WHERE ce.sale_id = s.id
+)
+ON CONFLICT (sale_id) DO NOTHING;
