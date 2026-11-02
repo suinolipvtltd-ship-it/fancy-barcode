@@ -231,6 +231,17 @@ export async function POST(request: Request) {
       });
     }
 
+    // 4. Store the reminder itself. The admin calendar reads this table, so a
+    // reminder must exist as soon as the sale does — otherwise the app shows
+    // nothing until (and unless) the extension manages to book the Google
+    // event. `POST /api/calendar/events` later fills in google_event_id and
+    // html_link once the event really exists.
+    await sql`
+      INSERT INTO calendar_events (sale_id, event_date)
+      VALUES (${saleId}, ${reminder.date}::date)
+      ON CONFLICT (sale_id) DO NOTHING
+    `;
+
     return Response.json(
       {
         saleId,

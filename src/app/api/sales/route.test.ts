@@ -60,7 +60,8 @@ describe("POST /api/sales", () => {
       .mockResolvedValueOnce([{ id: "sale-1" }]) // sale insert
       .mockResolvedValueOnce([]) // sale_items insert
       .mockResolvedValueOnce([{ stock_qty: 3, low_stock_threshold: 3 }]) // stock decrement
-      .mockResolvedValueOnce([]); // inventory movement
+      .mockResolvedValueOnce([]) // inventory movement
+      .mockResolvedValueOnce([]); // calendar_events insert
 
     const response = await POST(jsonRequest(saleBody));
     const data = await response.json();
@@ -82,7 +83,7 @@ describe("POST /api/sales", () => {
     ]);
     expect(data.reminder.date).toBe("2027-10-29");
     expect(data.reminder.title).toContain("Asha Rao");
-    expect(mockSql).toHaveBeenCalledTimes(6);
+    expect(mockSql).toHaveBeenCalledTimes(7);
   });
 
   it("is idempotent for an already-recorded invoice", async () => {
@@ -105,7 +106,8 @@ describe("POST /api/sales", () => {
       .mockResolvedValueOnce([]) // existing sale lookup
       .mockResolvedValueOnce([{ id: "sale-2" }]) // sale insert (no customer name/phone)
       .mockResolvedValueOnce([]) // sale_items insert
-      .mockResolvedValueOnce([]); // product update matched nothing
+      .mockResolvedValueOnce([]) // product update matched nothing
+      .mockResolvedValueOnce([]); // calendar_events insert
 
     const response = await POST(
       jsonRequest({
