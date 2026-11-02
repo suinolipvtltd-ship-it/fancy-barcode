@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stock scanner — Fancy Barcode</title>
+    <link rel="stylesheet" href="scanner.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Stock scanner</h1>
+        <p class="muted">
+          Point the camera at a product QR code. This is read-only — it never
+          changes stock.
+        </p>
+      </header>
+
+      <div class="viewport">
+        <video id="video" playsinline muted></video>
+        <div class="reticle" aria-hidden="true"></div>
+        <p id="camera-note" class="camera-note" hidden></p>
+      </div>
+
+      <section id="result" class="result" aria-live="polite">
+        <p class="muted">Waiting for a scan…</p>
+      </section>
+
+      <form id="manual" class="manual">
+        <label>
+          <span>Or type a SKU / paste a product link</span>
+          <input
+            id="manual-input"
+            placeholder="e.g. DRS-1024"
+            autocomplete="off"
+          />
+        </label>
+        <button type="submit" class="primary">Look up</button>
+      </form>
+
+      <h2>This session</h2>
+      <ul id="history" class="history"></ul>
+    </main>
+
+    <script src="scanner.js" type="module"></script>
+  </body>
+</html>

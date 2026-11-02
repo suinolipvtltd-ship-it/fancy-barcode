@@ -49,3 +49,69 @@ export interface JobRecord {
   rowCount: number;
   createdAt: string;
 }
+
+/** Product row with stock information (GET /api/inventory?sku=...) */
+export interface ProductStock {
+  sku: string;
+  name: string;
+  size: string | null;
+  price: string | null;
+  stockQty: number;
+  lowStockThreshold: number;
+  lowStock: boolean;
+  updatedAt: string;
+}
+
+/** POST /api/sales request body sent by the extension */
+export interface CreateSaleRequest {
+  source?: string;
+  externalId: string;
+  soldAt?: string;
+  customer?: {
+    name?: string;
+    phone?: string;
+    note?: string;
+  };
+  items: {
+    sku?: string;
+    name?: string;
+    qty?: number;
+    unitPrice?: number;
+  }[];
+  totalAmount?: number;
+  raw?: unknown;
+}
+
+/** Stock outcome per line item after a sale was recorded */
+export interface SaleItemStock {
+  sku: string | null;
+  name: string | null;
+  qty: number;
+  stockQty: number | null;
+  lowStockThreshold: number | null;
+  lowStock: boolean;
+  known: boolean;
+}
+
+/** POST /api/sales response */
+export interface CreateSaleResponse {
+  saleId: string;
+  /** true when this invoice had already been recorded */
+  duplicate: boolean;
+  items: SaleItemStock[];
+  reminder: {
+    date: string;
+    title: string;
+    description: string;
+  };
+  warnings: string[];
+}
+
+/** POST /api/calendar/events request body */
+export interface SaveCalendarEventRequest {
+  saleId: string;
+  googleEventId?: string;
+  eventDate: string;
+  htmlLink?: string;
+  calendarId?: string;
+}

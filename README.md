@@ -20,6 +20,28 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Inventory + Chrome extension
+
+Beyond label generation, the app now stores products/stock and accepts sales from
+a companion Chrome extension (`extension/`). The extension detects sales on
+Swipe, books a Google Calendar reminder for the same customer one year later,
+and looks up live stock by scanning a product QR code.
+
+Setup, in order:
+
+```bash
+psql "$DATABASE_URL" -f scripts/migrate.sql        # products, sales, api_tokens, …
+npm run import-products -- sample-products.csv     # bulk-load SKUs + stock
+npm run issue-token -- you@example.com "Chrome extension"
+```
+
+Then follow [`extension/README.md`](extension/README.md) (Google OAuth client,
+loading the unpacked extension, settings).
+
+New endpoints: `GET|POST /api/inventory`, `POST /api/inventory/scan`,
+`POST /api/sales`, `POST /api/calendar/events`, `GET|POST|DELETE /api/tokens`.
+Product QR codes point at `/p/<sku>`, a public read-only stock page.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fancy Barcode — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Fancy Barcode settings</h1>
+      <p class="muted">
+        The extension talks to your Fancy Barcode deployment with a bearer
+        token. Mint one from the app (<code>POST /api/tokens</code>) or with
+        <code>npm run issue-token</code>.
+      </p>
+
+      <form id="form">
+        <label>
+          <span>API base URL</span>
+          <input
+            id="apiBaseUrl"
+            type="url"
+            placeholder="https://your-site.netlify.app"
+            required
+          />
+        </label>
+
+        <label>
+          <span>API token</span>
+          <input
+            id="apiToken"
+            type="password"
+            placeholder="Paste the token shown once at creation"
+          />
+        </label>
+
+        <div class="grid">
+          <label>
+            <span>Remind me after</span>
+            <select id="reminderYears">
+              <option value="1">1 year</option>
+              <option value="2">2 years</option>
+              <option value="3">3 years</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Calendar alert</span>
+            <select id="reminderMinutes">
+              <option value="0">On the day</option>
+              <option value="60">1 hour before</option>
+              <option value="1440">1 day before</option>
+              <option value="10080">1 week before</option>
+              <option value="20160">2 weeks before</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="check">
+          <input id="autoSend" type="checkbox" />
+          <span>
+            Save detected sales automatically
+            <em>(otherwise you confirm each one in the Swipe panel)</em>
+          </span>
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="primary">Save settings</button>
+          <button type="button" id="test">Test connection</button>
+        </div>
+      </form>
+
+      <p id="message" class="message" role="status"></p>
+    </main>
+
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

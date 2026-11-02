@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fancy Barcode</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Fancy Barcode</h1>
+      <p class="muted" id="api-state">Checking connection…</p>
+    </header>
+
+    <section class="rows">
+      <div class="row">
+        <span>API</span><span class="pill" id="api-pill">—</span>
+      </div>
+      <div class="row">
+        <span>Google Calendar</span><span class="pill" id="google-pill">—</span>
+      </div>
+      <div class="row">
+        <span>Pending retries</span><span id="queue-count">0</span>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="scan" class="primary" type="button">Scan product QR</button>
+      <button id="connect" type="button">Connect Google Calendar</button>
+      <button id="test-calendar" type="button">Test calendar event</button>
+      <button id="flush" type="button">Retry pending</button>
+      <button id="options" type="button">Settings</button>
+    </div>
+
+    <h2>Recent sales</h2>
+    <ul id="recent" class="recent"></ul>
+    <p class="muted" id="message"></p>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>
