@@ -1,5 +1,11 @@
 import { authenticateRequest } from "@/lib/apiAuth";
-import { dismissReminder, listReminders, restoreReminder } from "@/lib/reminders";
+import {
+  dismissReminder,
+  listReminders,
+  restoreReminder,
+  updateReminder,
+} from "@/lib/reminders";
+import type { UpdateReminderRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -87,5 +93,79 @@ export async function DELETE(request: Request) {
   } catch (e) {
     console.error("DELETE /api/reminders error:", e);
     return Response.json({ error: "Reminder could not be updated." }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/reminders — edits what the reminder is about: the products/sizes
+ * bought, whether the order was for a girl or boy, and the child's age.
+ */
+export async function PATCH(request: Request) {
+  const user = await authenticateRequest(request);
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: UpdateReminderRequest;
+  try {
+    body = (await request.json()) as UpdateReminderRequest;
+  } catch {
+    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
+  if (!id) {
+    return Response.json({ error: "Field 'id' is required." }, { status: 400 });
+  }
+
+  if (
+    body.childGender !== undefined &&
+    body.childGender !== null &&
+    body.childGender !== "girl" &&
+    body.childGender !== "boy"
+  ) {
+    return Response.json(
+      { error: "Field 'childGender' must be 'girl', 'boy' or null." },
+      { status: 400 },
+    );
+  }
+
+  if (body.childAgeYears !== undefined && body.childAgeYears !== null) {
+    const age = Number(body.childAgeYears);
+    if (!Number.isInteger(age) || age < 0 || age > 25) {
+      return Response.json(
+        { error: "Field 'childAgeYears' must be a whole number between 0 and 25." },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (body.items !== undefined && !Array.isArray(body.items)) {
+    return Response.json({ error: "Field 'items' must be an array." }, { status: 400 });
+  }
+
+  try {
+    const reminder = await updateReminder(id, {
+      ...body,
+      id,
+      childAgeYears:
+        body.childAgeYears === undefined
+          ? undefined
+          : body.childAgeYears === null
+            ? null
+            : Number(body.childAgeYears),
+    });
+
+    if (!reminder) {
+      return Response.json(
+        { error: "Reminder not found or already removed." },
+        { status: 404 },
+      );
+    }
+
+    return Response.json({ reminder });
+  } catch (e) {
+    console.error("PATCH /api/reminders error:", e);
+    return Response.json({ error: "Reminder could not be saved." }, { status: 500 });
   }
 }
