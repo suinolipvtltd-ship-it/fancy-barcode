@@ -137,6 +137,8 @@ export interface ReminderRecord {
   /** calendar_events.id */
   id: string;
   saleId: string;
+  /** Swipe invoice / bill number, e.g. "INV-123". */
+  externalId: string;
   /** All-day event date, YYYY-MM-DD */
   eventDate: string;
   googleEventId: string | null;

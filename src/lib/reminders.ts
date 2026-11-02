@@ -14,6 +14,7 @@ import type {
 interface ReminderQueryRow {
   id: string;
   sale_id: string;
+  external_id: string;
   event_date: string | Date;
   google_event_id: string | null;
   html_link: string | null;
@@ -40,6 +41,7 @@ function toReminder(row: ReminderQueryRow): ReminderRecord {
   return {
     id: row.id,
     saleId: row.sale_id,
+    externalId: row.external_id,
     eventDate: isoDay(row.event_date),
     googleEventId: row.google_event_id,
     htmlLink: row.html_link,
@@ -78,6 +80,7 @@ export async function listReminders({
       ce.event_date,
       ce.google_event_id,
       ce.html_link,
+      s.external_id,
       s.customer_name,
       s.customer_phone,
       s.total_amount,
@@ -152,6 +155,7 @@ export async function getReminder(id: string): Promise<ReminderRecord | null> {
       ce.event_date,
       ce.google_event_id,
       ce.html_link,
+      s.external_id,
       s.customer_name,
       s.customer_phone,
       s.total_amount,
