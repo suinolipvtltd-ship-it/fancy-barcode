@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Fancy Barcode — Sale Reminder & Stock",
+  "version": "0.1.0",
+  "description": "Detects Swipe sales, books a birthday-dress follow-up on Google Calendar for next year, and looks up live stock by scanning a product QR code.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "identity", "alarms", "tabs"],
+  "host_permissions": [
+    "https://app.getswipe.in/*",
+    "https://www.googleapis.com/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://*.netlify.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Fancy Barcode sales assistant"
+  },
+  "options_page": "options/options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://app.getswipe.in/*"],
+      "js": ["content/swipe.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "oauth2": {
+    "client_id": "8OYn6rAM_0c9TLAC_ed6O-_uNu8bkVRfOIqLdt5LnuE.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/calendar.events"]
+  }
+}

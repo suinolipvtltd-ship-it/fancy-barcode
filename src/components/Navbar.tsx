@@ -20,6 +20,12 @@ export default async function Navbar() {
           >
             Label Designer
           </Link>
+          <Link
+            href="/reminders"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            Reminders
+          </Link>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-gray-500">{user.email}</span>

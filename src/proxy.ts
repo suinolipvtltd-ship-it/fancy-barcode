@@ -33,6 +33,8 @@ export const config = {
     /*
      * Match all paths except static assets and API routes.
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/).*)",
+    // `p/` is the public QR stock-check page; `api/` handlers authenticate
+    // themselves (session cookie or extension bearer token).
+    "/((?!_next/static|_next/image|favicon\\.ico|p/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/).*)",
   ],
 };

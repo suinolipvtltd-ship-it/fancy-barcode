@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest --run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "issue-token": "node scripts/issue-token.mjs",
+    "import-products": "node scripts/import-products.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
