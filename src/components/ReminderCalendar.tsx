@@ -9,7 +9,27 @@ interface Props {
   initialMonth: string;
 }
 
+type GenderFilter = "all" | "girl" | "boy";
+type ViewMode = "calendar" | "month";
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const AGE_FILTERS = [
+  { value: "all", label: "Any age" },
+  { value: "0-2", label: "0 – 2 years" },
+  { value: "3-5", label: "3 – 5 years" },
+  { value: "6-8", label: "6 – 8 years" },
+  { value: "9-12", label: "9 – 12 years" },
+  { value: "13+", label: "13+ years" },
+];
+
+const COST_FILTERS = [
+  { value: "all", label: "Any value" },
+  { value: "1000", label: "Above ₹1,000" },
+  { value: "2000", label: "Above ₹2,000" },
+  { value: "3000", label: "Above ₹3,000" },
+  { value: "5000", label: "Above ₹5,000" },
+];
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
@@ -33,9 +53,24 @@ function monthLabel(month: string): string {
   });
 }
 
+function shortDayLabel(isoDay: string): string {
+  const [year, month, day] = isoDay.split("-").map(Number);
+  return new Date(year, month - 1, day, 12).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function shiftMonth(month: string, delta: number): string {
   const date = monthStart(month);
   date.setMonth(date.getMonth() + delta);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+}
+
+function shiftYear(month: string, delta: number): string {
+  const date = monthStart(month);
+  date.setFullYear(date.getFullYear() + delta);
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
@@ -96,6 +131,51 @@ function childSummary(reminder: ReminderRecord): string | null {
   if (reminder.childGender === "boy") parts.push("Boy");
   if (reminder.childAgeYears !== null) parts.push(`${reminder.childAgeYears} yrs`);
   return parts.length ? parts.join(" · ") : null;
+}
+
+/** `https://wa.me/<country><number>?text=…` — assumes Indian numbers. */
+function whatsappLink(reminder: ReminderRecord): string | null {
+  if (!reminder.customerPhone) return null;
+  let digits = reminder.customerPhone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.length === 10) digits = `91${digits}`;
+  if (digits.length < 10) return null;
+
+  const first = reminder.items.find((item) => item.name || item.sku);
+  const product = first
+    ? [first.name || first.sku, first.size ? `size ${first.size}` : null]
+        .filter(Boolean)
+        .join(" ")
+    : null;
+
+  const message = `Hi ${reminder.customerName || "there"}, this is a friendly reminder from the shop.${
+    product ? ` Hope the ${product} is going well!` : ""
+  }`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
+function ageMatches(age: number | null, range: string): boolean {
+  if (range === "all") return true;
+  if (age === null) return false;
+  if (range === "13+") return age >= 13;
+  const [min, max] = range.split("-").map(Number);
+  return age >= min && age <= max;
+}
+
+function costMatches(total: string | null, threshold: string): boolean {
+  if (threshold === "all") return true;
+  const value = total === null ? 0 : Number(total);
+  return Number.isFinite(value) && value > Number(threshold);
+}
+
+function matchesFilters(
+  reminder: ReminderRecord,
+  filters: { gender: GenderFilter; age: string; cost: string },
+): boolean {
+  if (filters.gender !== "all" && reminder.childGender !== filters.gender) return false;
+  if (!ageMatches(reminder.childAgeYears, filters.age)) return false;
+  if (!costMatches(reminder.totalAmount, filters.cost)) return false;
+  return true;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -187,9 +267,9 @@ function ReminderEditor({
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3">
+    <div className="mt-3 space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
       <div>
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
           Products
         </p>
         <div className="space-y-2">
@@ -199,26 +279,26 @@ function ReminderEditor({
                 value={item.name}
                 onChange={(event) => update(index, { name: event.target.value })}
                 placeholder="Product"
-                className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                className="min-w-0 flex-1 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
               />
               <input
                 value={item.size}
                 onChange={(event) => update(index, { size: event.target.value })}
                 placeholder="Size"
-                className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                className="w-20 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
               />
               <input
                 value={item.qty}
                 onChange={(event) => update(index, { qty: event.target.value })}
                 type="number"
                 min="1"
-                className="w-16 rounded border border-gray-300 px-2 py-1 text-sm"
+                className="w-16 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
               />
               <button
                 type="button"
                 onClick={() => removeRow(index)}
                 title="Remove product"
-                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-500 hover:bg-white"
+                className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-gray-500 hover:bg-blue-50"
               >
                 ✕
               </button>
@@ -228,7 +308,7 @@ function ReminderEditor({
         <button
           type="button"
           onClick={addRow}
-          className="mt-2 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+          className="mt-2 rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
         >
           + Add product
         </button>
@@ -236,7 +316,7 @@ function ReminderEditor({
 
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
             Order for
           </p>
           <div className="flex gap-1">
@@ -253,8 +333,8 @@ function ReminderEditor({
                 onClick={() => setGender(value)}
                 className={`rounded border px-3 py-1 text-xs ${
                   gender === value
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-blue-200 bg-white text-gray-700 hover:bg-blue-50"
                 }`}
               >
                 {label}
@@ -264,7 +344,7 @@ function ReminderEditor({
         </div>
 
         <label className="text-xs text-gray-600">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-blue-700">
             Child age (years)
           </span>
           <input
@@ -274,7 +354,7 @@ function ReminderEditor({
             min="0"
             max="25"
             placeholder="e.g. 4"
-            className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
+            className="w-28 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
           />
         </label>
       </div>
@@ -286,7 +366,7 @@ function ReminderEditor({
           type="button"
           onClick={save}
           disabled={saving}
-          className="rounded bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save details"}
         </button>
@@ -294,7 +374,7 @@ function ReminderEditor({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-50"
+          className="rounded border border-blue-200 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-blue-50"
         >
           Cancel
         </button>
@@ -307,6 +387,115 @@ function ReminderEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Card                                                                        */
+/* -------------------------------------------------------------------------- */
+
+function ReminderCard({
+  reminder,
+  editing,
+  showDate,
+  onToggleEdit,
+  onSaved,
+  onRemoved,
+}: {
+  reminder: ReminderRecord;
+  editing: boolean;
+  showDate?: boolean;
+  onToggleEdit: () => void;
+  onSaved: (next: ReminderRecord) => void;
+  onRemoved: (removed: ReminderRecord) => void;
+}) {
+  const child = childSummary(reminder);
+  const whatsapp = whatsappLink(reminder);
+
+  return (
+    <li className="rounded-lg border border-blue-100 bg-white p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            {showDate && (
+              <span className="rounded bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+                {shortDayLabel(reminder.eventDate)}
+              </span>
+            )}
+            <span className="text-sm font-medium text-gray-900">
+              {reminder.customerName || "Walk-in customer"}
+              <span className="ml-1 text-xs font-normal tabular-nums text-blue-700">
+                ({reminder.externalId})
+              </span>
+            </span>
+            {reminder.customerPhone && (
+              <a
+                href={`tel:${reminder.customerPhone}`}
+                className="text-xs text-gray-600 hover:text-blue-700"
+              >
+                {reminder.customerPhone}
+              </a>
+            )}
+            {child && (
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">
+                {child}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-1 text-sm text-gray-700">{itemSummary(reminder)}</p>
+
+          <p className="mt-1 text-xs text-gray-500">
+            Sold{" "}
+            {new Date(reminder.soldAt).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+            {reminder.totalAmount ? ` · ₹${reminder.totalAmount}` : ""}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {whatsapp && (
+            <a
+              href={whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded border border-green-300 bg-white px-2 py-1 text-xs text-green-700 hover:bg-green-50"
+            >
+              WhatsApp
+            </a>
+          )}
+          {reminder.htmlLink && (
+            <a
+              href={reminder.htmlLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+            >
+              Google event
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={onToggleEdit}
+            className="rounded border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+          >
+            {editing ? "Close" : "Edit details"}
+          </button>
+        </div>
+      </div>
+
+      {editing && (
+        <ReminderEditor
+          reminder={reminder}
+          onSaved={onSaved}
+          onCancel={onToggleEdit}
+          onRemoved={onRemoved}
+        />
+      )}
+    </li>
   );
 }
 
@@ -324,6 +513,11 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
     initial.length > 0 ? initial[0].eventDate : today,
   );
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAll, setEditAll] = useState(false);
+  const [view, setView] = useState<ViewMode>("calendar");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [ageFilter, setAgeFilter] = useState("all");
+  const [costFilter, setCostFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removed, setRemoved] = useState<ReminderRecord | null>(null);
@@ -350,6 +544,8 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
         if (cancelled) return;
         setByDay(groupByDay(reminders));
         setEditingId(null);
+        setEditAll(false);
+        setSelected(reminders.length > 0 ? reminders[0].eventDate : `${month}-01`);
       })
       .catch((e) => {
         if (!cancelled) {
@@ -370,7 +566,31 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
     () => Object.values(byDay).flat().filter((r) => monthOf(r.eventDate) === month),
     [byDay, month],
   );
-  const dayReminders = byDay[selected] ?? [];
+  const visibleReminders = useMemo(
+    () =>
+      monthReminders
+        .filter((reminder) =>
+          matchesFilters(reminder, {
+            gender: genderFilter,
+            age: ageFilter,
+            cost: costFilter,
+          }),
+        )
+        .sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
+    [monthReminders, genderFilter, ageFilter, costFilter],
+  );
+  const visibleByDay = useMemo(() => groupByDay(visibleReminders), [visibleReminders]);
+  const dayReminders = visibleByDay[selected] ?? [];
+
+  const years = useMemo(() => {
+    const current = new Date().getFullYear();
+    const base = monthStart(month).getFullYear();
+    const from = Math.min(current, base) - 1;
+    return Array.from({ length: 7 }, (_, index) => from + index);
+  }, [month]);
+
+  const filtersActive =
+    genderFilter !== "all" || ageFilter !== "all" || costFilter !== "all";
 
   function replaceEverywhere(next: ReminderRecord) {
     setByDay((prev) => {
@@ -430,45 +650,175 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
     }
   }
 
+  const monthButton =
+    "rounded border border-blue-200 bg-white px-2 py-1 text-sm text-blue-700 hover:bg-blue-50";
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMonth(shiftYear(month, -1))}
+            className={monthButton}
+            aria-label="Previous year"
+            title="Previous year"
+          >
+            «
+          </button>
           <button
             type="button"
             onClick={() => setMonth(shiftMonth(month, -1))}
-            className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+            className={monthButton}
             aria-label="Previous month"
           >
             ‹
           </button>
-          <h2 className="min-w-40 text-center text-base font-semibold text-gray-900">
+
+          <h2 className="min-w-36 text-center text-base font-semibold text-blue-900">
             {monthLabel(month)}
           </h2>
+
           <button
             type="button"
             onClick={() => setMonth(shiftMonth(month, 1))}
-            className="rounded border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+            className={monthButton}
             aria-label="Next month"
           >
             ›
           </button>
           <button
             type="button"
+            onClick={() => setMonth(shiftYear(month, 1))}
+            className={monthButton}
+            aria-label="Next year"
+            title="Next year"
+          >
+            »
+          </button>
+
+          <select
+            value={String(monthStart(month).getFullYear())}
+            onChange={(event) => {
+              const year = Number(event.target.value);
+              setMonth(`${year}-${pad(monthStart(month).getMonth() + 1)}`);
+              setEditingId(null);
+            }}
+            className="rounded border border-blue-200 bg-white px-2 py-1 text-sm text-blue-800"
+            aria-label="Jump to year"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
             onClick={() => {
               setMonth(monthOf(today));
               setSelected(today);
+              setEditingId(null);
             }}
-            className="ml-2 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+            className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
           >
             Today
           </button>
         </div>
 
-        <span className="text-sm text-gray-600">
-          {loading
-            ? "Loading…"
-            : `${monthReminders.length} reminder${monthReminders.length === 1 ? "" : "s"} this month`}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">
+            {loading
+              ? "Loading…"
+              : `${visibleReminders.length} reminder${
+                  visibleReminders.length === 1 ? "" : "s"
+                }`}
+          </span>
+          <div className="flex overflow-hidden rounded border border-blue-200">
+            {(
+              [
+                ["calendar", "Calendar"],
+                ["month", "Month list"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setView(value)}
+                className={`px-3 py-1 text-xs ${
+                  view === value
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-blue-700 hover:bg-blue-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-900">
+        <label className="flex items-center gap-1">
+          <span className="font-semibold uppercase tracking-wide">Gender</span>
+          <select
+            value={genderFilter}
+            onChange={(event) => setGenderFilter(event.target.value as GenderFilter)}
+            className="rounded border border-blue-200 bg-white px-2 py-1"
+          >
+            <option value="all">All</option>
+            <option value="girl">Girl</option>
+            <option value="boy">Boy</option>
+          </select>
+        </label>
+
+        <label className="flex items-center gap-1">
+          <span className="font-semibold uppercase tracking-wide">Age</span>
+          <select
+            value={ageFilter}
+            onChange={(event) => setAgeFilter(event.target.value)}
+            className="rounded border border-blue-200 bg-white px-2 py-1"
+          >
+            {AGE_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-1">
+          <span className="font-semibold uppercase tracking-wide">Order value</span>
+          <select
+            value={costFilter}
+            onChange={(event) => setCostFilter(event.target.value)}
+            className="rounded border border-blue-200 bg-white px-2 py-1"
+          >
+            {COST_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={() => {
+              setGenderFilter("all");
+              setAgeFilter("all");
+              setCostFilter("all");
+            }}
+            className="rounded border border-blue-300 bg-white px-2 py-1 text-blue-700 hover:bg-blue-100"
+          >
+            Clear filters
+          </button>
+        )}
+
+        <span className="ml-auto text-blue-700">
+          {visibleReminders.length} of {monthReminders.length} this month
         </span>
       </div>
 
@@ -478,25 +828,36 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
         </p>
       )}
 
+      {!loading && !error && monthReminders.length === 0 && (
+        <p className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          No reminders in {monthLabel(month)}. Follow-ups are booked about a year after
+          the sale — use <strong>›</strong> or the year picker to move forward.
+        </p>
+      )}
+
       {removed && (
-        <div className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+        <div className="flex items-center justify-between rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
           <span>Removed {removed.customerName || "reminder"}.</span>
           <button
             type="button"
             onClick={undo}
-            className="rounded border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-100"
+            className="rounded border border-blue-200 bg-white px-3 py-1 text-xs text-blue-700 hover:bg-blue-100"
           >
             Undo
           </button>
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+      <div
+        className={`overflow-hidden rounded-lg border border-blue-100 bg-white ${
+          view === "calendar" ? "" : "hidden"
+        }`}
+      >
+        <div className="grid grid-cols-7 border-b border-blue-100 bg-blue-50">
           {WEEKDAYS.map((label) => (
             <div
               key={label}
-              className="px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+              className="px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-700"
             >
               {label}
             </div>
@@ -507,7 +868,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
           {grid.map((date) => {
             const iso = ymd(date);
             const inMonth = monthOf(iso) === month;
-            const rows = byDay[iso] ?? [];
+            const rows = visibleByDay[iso] ?? [];
             const isToday = iso === today;
             const isSelected = iso === selected;
 
@@ -519,15 +880,15 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                   setSelected(iso);
                   setEditingId(null);
                 }}
-                className={`min-h-24 border-b border-r border-gray-100 p-1.5 text-left align-top last:border-r-0 ${
-                  inMonth ? "bg-white" : "bg-gray-50/60"
-                } ${isSelected ? "ring-2 ring-inset ring-indigo-500" : ""}`}
+                className={`min-h-24 border-b border-r border-blue-50 p-1.5 text-left align-top last:border-r-0 ${
+                  inMonth ? "bg-white" : "bg-blue-50/40"
+                } ${isSelected ? "ring-2 ring-inset ring-blue-500" : ""}`}
               >
                 <div className="flex items-center justify-between">
                   <span
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
                       isToday
-                        ? "bg-indigo-600 font-semibold text-white"
+                        ? "bg-blue-600 font-semibold text-white"
                         : inMonth
                           ? "text-gray-900"
                           : "text-gray-400"
@@ -544,7 +905,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                   {rows.slice(0, 2).map((reminder) => (
                     <span
                       key={reminder.id}
-                      className="block truncate rounded bg-indigo-50 px-1 py-0.5 text-[11px] text-indigo-900"
+                      className="block truncate rounded bg-blue-50 px-1 py-0.5 text-[11px] text-blue-900"
                     >
                       {reminder.customerName || "Reminder"}
                       {reminder.childGender === "girl"
@@ -561,101 +922,85 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
         </div>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">
-          {dayLabel(selected)}
-          <span className="ml-2 font-normal text-gray-500">
-            {dayReminders.length} reminder{dayReminders.length === 1 ? "" : "s"}
-          </span>
-        </h3>
+      {view === "month" ? (
+        <div>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-blue-900">
+              {monthLabel(month)} · all reminders
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEditAll((value) => !value)}
+                className={`rounded border px-3 py-1 text-xs ${
+                  editAll
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                }`}
+              >
+                {editAll ? "Close all editors" : "Edit all"}
+              </button>
+            </div>
+          </div>
 
-        {dayReminders.length === 0 ? (
-          <p className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Nothing booked for this day.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {dayReminders.map((reminder) => {
-              const child = childSummary(reminder);
-              return (
-                <li
+          {visibleReminders.length === 0 ? (
+            <p className="rounded border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+              Nothing matches these filters this month.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {visibleReminders.map((reminder) => (
+                <ReminderCard
                   key={reminder.id}
-                  className="rounded-lg border border-gray-200 bg-white p-3"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {reminder.customerName || "Walk-in customer"}
-                        </span>
-                        {reminder.customerPhone && (
-                          <a
-                            href={`tel:${reminder.customerPhone}`}
-                            className="text-xs text-gray-600 hover:text-gray-900"
-                          >
-                            {reminder.customerPhone}
-                          </a>
-                        )}
-                        {child && (
-                          <span className="rounded bg-pink-50 px-2 py-0.5 text-[11px] text-pink-700">
-                            {child}
-                          </span>
-                        )}
-                      </div>
+                  reminder={reminder}
+                  showDate
+                  editing={editAll || editingId === reminder.id}
+                  onToggleEdit={() => {
+                    if (editAll) {
+                      setEditAll(false);
+                      setEditingId(reminder.id);
+                      return;
+                    }
+                    setEditingId(editingId === reminder.id ? null : reminder.id);
+                  }}
+                  onSaved={replaceEverywhere}
+                  onRemoved={remove}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-blue-900">
+            {dayLabel(selected)}
+            <span className="ml-2 font-normal text-gray-500">
+              {dayReminders.length} reminder{dayReminders.length === 1 ? "" : "s"}
+            </span>
+          </h3>
 
-                      <p className="mt-1 text-sm text-gray-700">
-                        {itemSummary(reminder)}
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-500">
-                        Sold{" "}
-                        {new Date(reminder.soldAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                        {reminder.totalAmount ? ` · ₹${reminder.totalAmount}` : ""}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {reminder.htmlLink && (
-                        <a
-                          href={reminder.htmlLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        >
-                          Google event
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditingId(editingId === reminder.id ? null : reminder.id)
-                        }
-                        className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                      >
-                        {editingId === reminder.id ? "Close" : "Edit details"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {editingId === reminder.id && (
-                    <ReminderEditor
-                      reminder={reminder}
-                      onSaved={replaceEverywhere}
-                      onCancel={() => setEditingId(null)}
-                      onRemoved={remove}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+          {dayReminders.length === 0 ? (
+            <p className="rounded border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+              Nothing booked for this day.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {dayReminders.map((reminder) => (
+                <ReminderCard
+                  key={reminder.id}
+                  reminder={reminder}
+                  editing={editingId === reminder.id}
+                  onToggleEdit={() =>
+                    setEditingId(editingId === reminder.id ? null : reminder.id)
+                  }
+                  onSaved={replaceEverywhere}
+                  onRemoved={remove}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }
-

@@ -21,10 +21,28 @@ export default async function RemindersPage() {
   const to = day(new Date(Date.UTC(year, monthIndex, 0)));
 
   let reminders: ReminderRecord[] = [];
+  let initialMonth = month;
+  let nextReminder: string | null = null;
   let error: string | null = null;
 
   try {
     reminders = await listReminders({ from, to });
+
+    if (reminders.length > 0) {
+      nextReminder = reminders[0].eventDate;
+    } else {
+      // Reminders land a year after the sale, so the current month is usually
+      // empty. Open the calendar where the next booking actually is.
+      const aheadTo = day(new Date(Date.UTC(year + 2, monthIndex, 0)));
+      const ahead = await listReminders({ from: day(now), to: aheadTo });
+      if (ahead.length > 0) {
+        nextReminder = ahead[0].eventDate;
+        initialMonth = nextReminder.slice(0, 7);
+        reminders = ahead.filter(
+          (reminder) => reminder.eventDate.slice(0, 7) === initialMonth,
+        );
+      }
+    }
   } catch (e) {
     console.error("RemindersPage load error:", e);
     error = e instanceof Error ? e.message : "Reminders could not be loaded.";
@@ -38,6 +56,18 @@ export default async function RemindersPage() {
           Birthday follow-ups booked from Swipe sales — customer, phone, product, size,
           and who the order was for.
         </p>
+        {nextReminder && (
+          <p className="mt-2 text-sm text-gray-800">
+            Next reminder:{" "}
+            <strong className="font-semibold">
+              {new Date(`${nextReminder}T12:00:00`).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </strong>
+          </p>
+        )}
       </header>
 
       {error ? (
@@ -45,7 +75,7 @@ export default async function RemindersPage() {
           {error}
         </p>
       ) : (
-        <ReminderCalendar initial={reminders} initialMonth={month} />
+        <ReminderCalendar initial={reminders} initialMonth={initialMonth} />
       )}
     </main>
   );
