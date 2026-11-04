@@ -12,6 +12,7 @@
  *   Unit Price / MRP / Selling Price → MRP
  *   Size                           → size label
  *   Stock / Qty / Quantity         → current stock      (default 0)
+ *   Opening Qty / Opening Stock    → current stock      (Swipe export)
  *
  * The SKU is what the product QR code must contain (directly or via
  * /p/<sku>), so keep the two in sync.
@@ -116,7 +117,9 @@ async function main() {
     const price = toNumber(pick(row, ["unit price", "mrp", "selling price", "price", "rate"]));
     const size = String(pick(row, ["size"]) ?? "").trim() || null;
     const stock =
-      toNumber(pick(row, ["stock", "qty", "quantity", "stock qty"])) ?? 0;
+      toNumber(
+        pick(row, ["stock", "qty", "quantity", "stock qty", "opening qty", "opening stock"]),
+      ) ?? 0;
 
     await sql`
       INSERT INTO products (sku, name, size, price, stock_qty, low_stock_threshold)

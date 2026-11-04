@@ -11,7 +11,18 @@ const COLUMN_ALIASES = {
   barcode: ["barcode", "barcodevalue", "barcodeno", "barcodenumber", "ean", "upc"],
   mrp: ["unitprice", "mrp", "sellingprice", "price", "rate", "amount"],
   sku: ["sku", "skuid", "skucode", "productcode", "itemcode", "code"],
-  quantity: ["quantity", "qty", "stock", "stockqty", "units", "pcs", "count"],
+  quantity: [
+    "quantity",
+    "qty",
+    // Swipe's export uses "Opening Qty" for the stock on hand.
+    "openingqty",
+    "openingquantity",
+    "stock",
+    "stockqty",
+    "units",
+    "pcs",
+    "count",
+  ],
 } as const;
 
 type ColumnField = keyof typeof COLUMN_ALIASES;
