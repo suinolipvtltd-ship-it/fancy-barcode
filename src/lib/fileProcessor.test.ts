@@ -216,6 +216,18 @@ describe("parseFile", () => {
     expect(result.records.map((record) => record.quantity)).toEqual([3, 1]);
   });
 
+  it("reads Swipe's Opening Qty column as the quantity", async () => {
+    const csv =
+      "Product,Variant,Barcode,Unit Price,Opening Qty,Units,Sku Id\n" +
+      "White Frock,1 Y,11001410,2445,2,,LPF528_1Y\n" +
+      "White Frock,2 Y,11001411,2495,3,,LPF528_2Y";
+    const result = await parseFile(createCsvFile(csv));
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records.map((record) => record.quantity)).toEqual([2, 3]);
+    expect(result.records[0].barcodeValue).toBe("11001410");
+  });
+
   it("defaults quantity to 1 when the column is missing or blank", async () => {
     const missing = await parseFile(
       createCsvFile("Name,Sku Id,MRP\nFrock,SKU-1,999"),
