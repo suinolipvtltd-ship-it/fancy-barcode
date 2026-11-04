@@ -62,6 +62,7 @@ describe("parseFile", () => {
       sku: "W-001",
       mrp: "9.99",
       barcodeValue: "1234567890",
+      quantity: 1,
       rowNumber: 2,
     });
   });
@@ -158,6 +159,7 @@ describe("parseFile", () => {
       sku: "SKU-1001",
       mrp: "1299",
       barcodeValue: "SKU-1001",
+      quantity: 1,
       rowNumber: 2,
     });
     expect(result.warnings[0]).toContain("Sku Id");
@@ -199,7 +201,45 @@ describe("parseFile", () => {
       sku: "SKU-42",
       mrp: "1299",
       barcodeValue: "SKU-42",
+      quantity: 1,
       rowNumber: 2,
     });
+  });
+
+  it("captures the Quantity column so every unit gets a label", async () => {
+    const csv = "Name,Sku Id,MRP,Quantity\nFrock,SKU-1,999,3\nShirt,SKU-2,499,1";
+    const file = createCsvFile(csv);
+
+    const result = await parseFile(file);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records.map((record) => record.quantity)).toEqual([3, 1]);
+  });
+
+  it("defaults quantity to 1 when the column is missing or blank", async () => {
+    const missing = await parseFile(
+      createCsvFile("Name,Sku Id,MRP\nFrock,SKU-1,999"),
+    );
+    expect(missing.records[0].quantity).toBe(1);
+
+    const blank = await parseFile(
+      createCsvFile("Name,Sku Id,MRP,Quantity\nFrock,SKU-1,999,"),
+    );
+    expect(blank.records[0].quantity).toBe(1);
+  });
+
+  it("rejects negative and fractional quantities instead of mangling them", async () => {
+    const csv =
+      "Name,Sku Id,MRP,Quantity\nNegative,SKU-1,999,-5\nFraction,SKU-2,999,1.5\nText,SKU-3,999,abc";
+    const result = await parseFile(createCsvFile(csv));
+
+    expect(result.records.map((record) => record.quantity)).toEqual([1, 1, 1]);
+  });
+
+  it("keeps the Quantity header when the first row's quantity is blank", async () => {
+    const csv = "Name,Sku Id,MRP,Quantity\nFrock,SKU-1,999,\nShirt,SKU-2,499,3";
+    const result = await parseFile(createCsvFile(csv));
+
+    expect(result.records.map((record) => record.quantity)).toEqual([1, 3]);
   });
 });

@@ -86,7 +86,14 @@ export default function JobHistory({ refreshKey = 0 }: { refreshKey?: number }) 
         >
           <div className="font-medium">{job.fileName}</div>
           <div className="text-sm text-gray-600">
-            {job.rowCount} {job.rowCount === 1 ? "row" : "rows"} · {formatTimestamp(job.createdAt)}
+            {job.rowCount} {job.rowCount === 1 ? "row" : "rows"}
+            {job.labelCount !== null && (
+              <>
+                {" "}
+                · {job.labelCount} {job.labelCount === 1 ? "label" : "labels"}
+              </>
+            )}{" "}
+            · {formatTimestamp(job.createdAt)}
           </div>
         </li>
       ))}

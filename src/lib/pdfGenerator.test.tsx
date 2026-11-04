@@ -36,6 +36,7 @@ function makeRecord(index: number): ProductRecord {
     sku: `SKU-${index}`,
     mrp: `${100 + index}`,
     barcodeValue: `BC${index}`,
+    quantity: 1,
     rowNumber: index,
   };
 }

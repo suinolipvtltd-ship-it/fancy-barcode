@@ -8,12 +8,14 @@ const mockJobs: JobRecord[] = [
     id: "abc-123",
     fileName: "products.xlsx",
     rowCount: 42,
+    labelCount: 126,
     createdAt: "2024-06-15T10:30:00.000Z",
   },
   {
     id: "def-456",
     fileName: "inventory.csv",
     rowCount: 1,
+    labelCount: null,
     createdAt: "2024-06-14T08:00:00.000Z",
   },
 ];
@@ -53,6 +55,7 @@ describe("JobHistory", () => {
 
     expect(screen.getByText("products.xlsx")).toBeDefined();
     expect(screen.getByText(/42 rows/)).toBeDefined();
+    expect(screen.getByText(/126 labels/)).toBeDefined();
 
     expect(screen.getByText("inventory.csv")).toBeDefined();
     expect(screen.getByText(/1 row(?!s)/)).toBeDefined();

@@ -11,6 +11,7 @@ const COLUMN_ALIASES = {
   barcode: ["barcode", "barcodevalue", "barcodeno", "barcodenumber", "ean", "upc"],
   mrp: ["unitprice", "mrp", "sellingprice", "price", "rate", "amount"],
   sku: ["sku", "skuid", "skucode", "productcode", "itemcode", "code"],
+  quantity: ["quantity", "qty", "stock", "stockqty", "units", "pcs", "count"],
 } as const;
 
 type ColumnField = keyof typeof COLUMN_ALIASES;
@@ -18,6 +19,19 @@ type ColumnMap = Partial<Record<ColumnField, string>>;
 
 function normalizeHeader(header: string): string {
   return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Quantity from the sheet; blank, zero, negative, fractional or unreadable
+ * values fall back to one label. The whole cell is validated — digits are not
+ * stripped, so "-5" does not become 5 and "1.5" does not become 15.
+ */
+function parseQuantity(raw: string): number {
+  const trimmed = raw.trim();
+  if (!trimmed) return 1;
+
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
 /** Maps each logical field to the actual header name found in the sheet. */
@@ -56,6 +70,9 @@ export function validateFileExtension(fileName: string): boolean {
  * (Unit Price / MRP / Selling Price). A barcode comes from the Barcode column
  * when present, otherwise the SKU ("Sku Id") is encoded as the barcode — that
  * is the whole point of the SKU column.
+ *
+ * An optional Quantity column is captured so the generators can print one
+ * label per unit.
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const records: ProductRecord[] = [];
@@ -86,7 +103,11 @@ export async function parseFile(file: File): Promise<ParseResult> {
   }
 
   const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+  // `defval` keeps empty cells in the row objects, so a blank value in the
+  // first data row cannot hide its header from `resolveColumns`.
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: "",
+  });
 
   if (rows.length === 0) {
     return {
@@ -141,6 +162,7 @@ export async function parseFile(file: File): Promise<ParseResult> {
       sku,
       mrp: read("mrp"),
       barcodeValue,
+      quantity: parseQuantity(read("quantity")),
       rowNumber,
     });
   }

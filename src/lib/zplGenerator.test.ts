@@ -23,6 +23,7 @@ const sampleRecord: ProductRecord = {
   sku: "SKU-001",
   mrp: "9.99",
   barcodeValue: "1234567890",
+  quantity: 1,
   rowNumber: 1,
 };
 
@@ -38,6 +39,20 @@ describe("generateZpl", () => {
     const xzCount = (result.zpl.match(/\^XZ/g) || []).length;
     expect(xaCount).toBe(3);
     expect(xzCount).toBe(3);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("prints one label per unit of quantity", () => {
+    const records: ProductRecord[] = [
+      { ...sampleRecord, quantity: 3 },
+      { ...sampleRecord, productName: "Widget B", sku: "SKU-002", quantity: 2 },
+    ];
+
+    const result = generateZpl({ records, config: baseConfig, dpi: 203 });
+    const xaCount = (result.zpl.match(/\^XA/g) || []).length;
+
+    expect(xaCount).toBe(5);
+    expect(result.labelCount).toBe(5);
     expect(result.warnings).toEqual([]);
   });
 
@@ -80,7 +95,7 @@ describe("generateZpl", () => {
     expect(result.zpl).not.toContain("^FDSKU-001^FS");
   });
 
-  it("always includes barcode and MRP", () => {
+  it("always includes barcode and price", () => {
     const config: LabelConfig = {
       includeProductName: false,
       includeSku: false,
@@ -92,7 +107,7 @@ describe("generateZpl", () => {
     const result = generateZpl({ records: [sampleRecord], config, dpi: 203 });
     expect(result.zpl).toContain("^BC");
     expect(result.zpl).toContain("^FD1234567890^FS");
-    expect(result.zpl).toContain("^FDMRP: 9.99^FS");
+    expect(result.zpl).toContain("^FDRs 9.99^FS");
   });
 
   it("starts each label with ^XA and ends with ^XZ", () => {

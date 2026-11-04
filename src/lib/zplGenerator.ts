@@ -1,4 +1,5 @@
 import { validateBarcodeValue } from "@/lib/barcodeUtils";
+import { expandByQuantity } from "@/lib/labelItems";
 import type { ProductRecord, LabelConfig } from "@/lib/types";
 
 export interface ZplOptions {
@@ -10,6 +11,8 @@ export interface ZplOptions {
 export interface ZplGeneratorResult {
   zpl: string;
   warnings: string[];
+  /** Number of label blocks generated (rows are repeated by quantity). */
+  labelCount: number;
 }
 
 /**
@@ -39,7 +42,12 @@ export function generateZpl(options: ZplOptions): ZplGeneratorResult {
     }
   }
 
-  const zpl = validRecords
+  // One label block per unit: a row with Quantity 3 prints three labels.
+  const expanded = expandByQuantity(validRecords);
+  warnings.push(...expanded.warnings);
+  const labelRecords = expanded.records;
+
+  const zpl = labelRecords
     .map((record) => {
       const lines: string[] = [];
       lines.push("^XA");
@@ -63,13 +71,13 @@ export function generateZpl(options: ZplOptions): ZplGeneratorResult {
         yPos += 30;
       }
 
-      // MRP (always shown)
-      lines.push(`^FO20,${yPos}^A0N,22,22^FDMRP: ${record.mrp}^FS`);
+      // Price (always shown)
+      lines.push(`^FO20,${yPos}^A0N,22,22^FDRs ${record.mrp}^FS`);
 
       lines.push("^XZ");
       return lines.join("\n");
     })
     .join("\n");
 
-  return { zpl, warnings };
+  return { zpl, warnings, labelCount: labelRecords.length };
 }

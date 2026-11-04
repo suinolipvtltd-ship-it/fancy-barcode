@@ -23,7 +23,13 @@ describe("POST /api/jobs", () => {
   it("creates a job and returns 201 with JobRecord", async () => {
     const now = new Date().toISOString();
     mockSql.mockResolvedValue([
-      { id: "abc-123", file_name: "test.xlsx", row_count: 10, created_at: now },
+      {
+        id: "abc-123",
+        file_name: "test.xlsx",
+        row_count: 10,
+        label_count: null,
+        created_at: now,
+      },
     ]);
 
     const request = new Request("http://localhost/api/jobs", {
@@ -40,8 +46,35 @@ describe("POST /api/jobs", () => {
       id: "abc-123",
       fileName: "test.xlsx",
       rowCount: 10,
+      labelCount: null,
       createdAt: new Date(now).toISOString(),
     });
+  });
+
+  it("stores the label count separately from the row count", async () => {
+    const now = new Date().toISOString();
+    mockSql.mockResolvedValue([
+      {
+        id: "abc-124",
+        file_name: "labels.xlsx",
+        row_count: 2,
+        label_count: 5,
+        created_at: now,
+      },
+    ]);
+
+    const request = new Request("http://localhost/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: "labels.xlsx", rowCount: 2, labelCount: 5 }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.rowCount).toBe(2);
+    expect(data.labelCount).toBe(5);
   });
 
   it("returns 400 for missing fileName", async () => {
@@ -110,8 +143,20 @@ describe("GET /api/jobs", () => {
     const now = new Date().toISOString();
     const earlier = new Date(Date.now() - 60000).toISOString();
     mockSql.mockResolvedValue([
-      { id: "id-1", file_name: "recent.xlsx", row_count: 20, created_at: now },
-      { id: "id-2", file_name: "older.csv", row_count: 5, created_at: earlier },
+      {
+        id: "id-1",
+        file_name: "recent.xlsx",
+        row_count: 20,
+        label_count: 60,
+        created_at: now,
+      },
+      {
+        id: "id-2",
+        file_name: "older.csv",
+        row_count: 5,
+        label_count: null,
+        created_at: earlier,
+      },
     ]);
 
     const response = await GET();

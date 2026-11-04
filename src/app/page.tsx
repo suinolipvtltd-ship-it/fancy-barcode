@@ -8,6 +8,7 @@ import PrintReminder from "@/components/PrintReminder";
 import { parseFile } from "@/lib/fileProcessor";
 import { generatePdf } from "@/lib/pdfGenerator";
 import { generateZpl } from "@/lib/zplGenerator";
+import { countLabels } from "@/lib/labelItems";
 import { DEFAULT_LAYOUT } from "@/lib/constants";
 import type { ProductRecord, LabelConfig, LabelElement } from "@/lib/types";
 
@@ -118,7 +119,7 @@ export default function Home() {
       prevPdfUrl.current = null;
     }
 
-    let generatedRecordCount = records.length;
+    let generatedLabelCount = 0;
 
     try {
       if (config.outputMode === "pdf") {
@@ -129,7 +130,7 @@ export default function Home() {
         prevPdfUrl.current = url;
         setPdfUrl(url);
         setGenerationWarnings(result.warnings);
-        generatedRecordCount = records.length - result.warnings.length;
+        generatedLabelCount = result.labelCount;
 
         // Auto-trigger download
         const downloadName = `${(fileName ?? "labels").replace(/\.[^.]+$/, "")}.pdf`;
@@ -145,7 +146,7 @@ export default function Home() {
         const result = generateZpl({ records, config, dpi: config.dpi });
         setZplOutput(result.zpl);
         setGenerationWarnings(result.warnings);
-        generatedRecordCount = records.length - result.warnings.length;
+        generatedLabelCount = result.labelCount;
       }
     } catch (err) {
       console.error("[PAGE] Generation failed:", err);
@@ -155,14 +156,17 @@ export default function Home() {
     }
 
     // Save job metadata regardless of generation outcome so the attempt is recorded
-    if (generatedRecordCount > 0) {
+    if (generatedLabelCount > 0) {
       try {
         const res = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fileName: fileName ?? "unknown",
-            rowCount: generatedRecordCount,
+            // Source rows vs printed labels: a row with quantity 3 prints three
+            // labels, so the two counts must not be conflated.
+            rowCount: records.length,
+            labelCount: generatedLabelCount,
           }),
         });
         if (!res.ok) {
@@ -202,6 +206,7 @@ export default function Home() {
   }, [zplOutput, fileName]);
 
   const hasRecords = records.length > 0;
+  const labelCount = countLabels(records);
   const hasErrors = parseErrors.length > 0;
 
   return (
@@ -231,7 +236,9 @@ export default function Home() {
             {hasRecords && (
               <p className="text-sm text-green-700">
                 ✓ {records.length} record{records.length !== 1 ? "s" : ""} parsed
-                successfully
+                {labelCount !== records.length && (
+                  <> · {labelCount} labels will be printed</>
+                )}
               </p>
             )}
             {parseWarnings.length > 0 && (

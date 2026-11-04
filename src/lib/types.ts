@@ -4,6 +4,11 @@ export interface ProductRecord {
   sku: string;
   mrp: string;
   barcodeValue: string;
+  /**
+   * How many labels to print for this row (the Quantity column). Defaults to 1
+   * when the file has no quantity column.
+   */
+  quantity: number;
   /** 1-based row index from the source file */
   rowNumber: number;
 }
@@ -40,6 +45,11 @@ export interface LabelConfig {
 export interface CreateJobRequest {
   fileName: string;
   rowCount: number;
+  /**
+   * Labels actually produced (quantity-expanded). Kept separate from rowCount
+   * so a row with quantity 3 is not reported as three source rows.
+   */
+  labelCount?: number;
 }
 
 /** GET /api/jobs response item */
@@ -47,6 +57,8 @@ export interface JobRecord {
   id: string;
   fileName: string;
   rowCount: number;
+  /** Null for jobs saved before label counts were tracked. */
+  labelCount: number | null;
   createdAt: string;
 }
 

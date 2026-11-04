@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs (created_at DESC);
 
+-- Labels actually produced by a job (quantity-expanded), kept separate from the
+-- number of source rows in the uploaded file. Null for older jobs.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS label_count INTEGER;
+
 -- Users table for email/password authentication (replaces Supabase Auth)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
