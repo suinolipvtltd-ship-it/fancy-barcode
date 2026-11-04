@@ -1,8 +1,45 @@
 import * as XLSX from "xlsx";
 import type { ProductRecord, ParseResult } from "@/lib/types";
 
-/** Columns that must always be present */
-const REQUIRED_COLUMNS = ["Product", "Barcode", "Unit Price"] as const;
+/**
+ * Header aliases, in priority order. Matching ignores case, spaces and
+ * punctuation, so "Sku Id", "SKU ID" and "sku_id" all resolve to the SKU, and
+ * "Name" resolves to the product name.
+ */
+const COLUMN_ALIASES = {
+  product: ["product", "productname", "name", "itemname", "item", "title"],
+  barcode: ["barcode", "barcodevalue", "barcodeno", "barcodenumber", "ean", "upc"],
+  mrp: ["unitprice", "mrp", "sellingprice", "price", "rate", "amount"],
+  sku: ["sku", "skuid", "skucode", "productcode", "itemcode", "code"],
+} as const;
+
+type ColumnField = keyof typeof COLUMN_ALIASES;
+type ColumnMap = Partial<Record<ColumnField, string>>;
+
+function normalizeHeader(header: string): string {
+  return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Maps each logical field to the actual header name found in the sheet. */
+export function resolveColumns(headers: string[]): ColumnMap {
+  const byNormalized = new Map<string, string>();
+  for (const header of headers) {
+    const key = normalizeHeader(header);
+    if (!byNormalized.has(key)) byNormalized.set(key, header);
+  }
+
+  const map: ColumnMap = {};
+  for (const field of Object.keys(COLUMN_ALIASES) as ColumnField[]) {
+    for (const alias of COLUMN_ALIASES[field]) {
+      const header = byNormalized.get(alias);
+      if (header) {
+        map[field] = header;
+        break;
+      }
+    }
+  }
+  return map;
+}
 
 /**
  * Returns true if the file extension is .xlsx or .csv (case-insensitive).
@@ -14,10 +51,11 @@ export function validateFileExtension(fileName: string): boolean {
 
 /**
  * Parses an uploaded .xlsx or .csv file into an array of ProductRecords.
- * Validates required columns: Product, Barcode, Unit Price.
- * SKU is optional — if missing, it defaults to an empty string.
- * Only the columns Product, Barcode, Unit Price, and SKU are read;
- * all other columns are ignored.
+ *
+ * Required: a product name column (Product / Name) and a price column
+ * (Unit Price / MRP / Selling Price). A barcode comes from the Barcode column
+ * when present, otherwise the SKU ("Sku Id") is encoded as the barcode — that
+ * is the whole point of the SKU column.
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const records: ProductRecord[] = [];
@@ -59,36 +97,49 @@ export async function parseFile(file: File): Promise<ParseResult> {
   }
 
   const headers = Object.keys(rows[0]);
-  const missingColumns = REQUIRED_COLUMNS.filter(
-    (col) => !headers.includes(col),
-  );
+  const columns = resolveColumns(headers);
 
-  if (missingColumns.length > 0) {
+  const missing: string[] = [];
+  if (!columns.product) missing.push("Product / Name");
+  if (!columns.mrp) missing.push("Unit Price / MRP");
+  if (!columns.barcode && !columns.sku) missing.push("Barcode or SKU / Sku Id");
+
+  if (missing.length > 0) {
     return {
       records: [],
       warnings: [],
-      errors: [`Missing columns: ${missingColumns.join(", ")}`],
+      errors: [`Missing columns: ${missing.join(", ")}`],
     };
   }
 
-  const hasSkuColumn = headers.includes("SKU");
+  if (!columns.barcode && columns.sku) {
+    warnings.push(
+      `No Barcode column found — using ${columns.sku} (SKU) as the barcode value.`,
+    );
+  }
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNumber = i + 2; // row 1 is the header
 
-    const barcodeValue = String(row["Barcode"] ?? "").trim();
+    const read = (field: ColumnField): string => {
+      const header = columns[field];
+      return header ? String(row[header] ?? "").trim() : "";
+    };
+
+    const sku = read("sku");
+    // The barcode is the Barcode column when it exists, otherwise the SKU.
+    const barcodeValue = read("barcode") || sku;
+
     if (!barcodeValue) {
-      warnings.push(`Row ${rowNumber}: empty Barcode, skipped`);
+      warnings.push(`Row ${rowNumber}: empty Barcode and SKU, skipped`);
       continue;
     }
 
-    const sku = hasSkuColumn ? String(row["SKU"] ?? "").trim() : "";
-
     records.push({
-      productName: String(row["Product"] ?? "").trim(),
+      productName: read("product"),
       sku,
-      mrp: String(row["Unit Price"] ?? "").trim(),
+      mrp: read("mrp"),
       barcodeValue,
       rowNumber,
     });

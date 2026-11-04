@@ -143,4 +143,63 @@ describe("parseFile", () => {
     expect(result.records[0].sku).toBe("");
     expect(result.records[1].sku).toBe("B-1");
   });
+
+  it("uses the Sku Id column as the barcode when there is no Barcode column", async () => {
+    const csv =
+      "Name,Sku Id,MRP\nCotton Frock,SKU-1001,1299\nDenim Dungaree,SKU-1002,1899";
+    const file = createCsvFile(csv);
+
+    const result = await parseFile(file);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records).toHaveLength(2);
+    expect(result.records[0]).toEqual({
+      productName: "Cotton Frock",
+      sku: "SKU-1001",
+      mrp: "1299",
+      barcodeValue: "SKU-1001",
+      rowNumber: 2,
+    });
+    expect(result.warnings[0]).toContain("Sku Id");
+  });
+
+  it("prefers the Barcode column when both Barcode and Sku Id exist", async () => {
+    const csv =
+      "Product,Barcode,Unit Price,Sku Id\nGadget,8901234567890,499,G-9";
+    const file = createCsvFile(csv);
+
+    const result = await parseFile(file);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records[0].barcodeValue).toBe("8901234567890");
+    expect(result.records[0].sku).toBe("G-9");
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("falls back to the SKU when a row has an empty Barcode", async () => {
+    const csv = "Name,Barcode,Sku Id,MRP\nFrock,,SKU-7,999";
+    const file = createCsvFile(csv);
+
+    const result = await parseFile(file);
+
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0].barcodeValue).toBe("SKU-7");
+  });
+
+  it("accepts the Swipe catalogue header layout", async () => {
+    const csv =
+      "Product Code,Name,Sku Id,Selling Price,MRP,Size\nPC-1,Cotton Frock,SKU-42,999,1299,2-3Y";
+    const file = createCsvFile(csv);
+
+    const result = await parseFile(file);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.records[0]).toEqual({
+      productName: "Cotton Frock",
+      sku: "SKU-42",
+      mrp: "1299",
+      barcodeValue: "SKU-42",
+      rowNumber: 2,
+    });
+  });
 });

@@ -5,12 +5,13 @@
  *   node scripts/import-products.mjs sample-products.csv
  *   node scripts/import-products.mjs products.xlsx --threshold 5
  *
- * Recognised columns (case-insensitive):
- *   Product / Name      → product name        (required)
- *   SKU / Barcode       → SKU used in the QR  (required; Barcode is the fallback)
- *   Unit Price / Price  → MRP
- *   Size                → size label
- *   Stock / Qty         → current stock       (default 0)
+ * Recognised columns (case-insensitive, spaces/punctuation ignored):
+ *   Product / Name / Product Name  → product name     (required)
+ *   SKU / Sku Id / Product Code    → SKU used in the QR (required)
+ *   Barcode                        → fallback SKU when there is no SKU column
+ *   Unit Price / MRP / Selling Price → MRP
+ *   Size                           → size label
+ *   Stock / Qty / Quantity         → current stock      (default 0)
  *
  * The SKU is what the product QR code must contain (directly or via
  * /p/<sku>), so keep the two in sync.
@@ -39,10 +40,15 @@ function loadEnvLocal() {
   }
 }
 
+function normalizeHeader(key) {
+  return key.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function pick(row, keys) {
+  const wanted = keys.map(normalizeHeader);
   for (const key of Object.keys(row)) {
-    const normalized = key.trim().toLowerCase();
-    if (keys.includes(normalized)) return row[key];
+    const normalized = normalizeHeader(key);
+    if (wanted.includes(normalized)) return row[key];
   }
   return undefined;
 }
@@ -94,8 +100,12 @@ async function main() {
   let skipped = 0;
 
   for (const row of rows) {
-    const name = String(pick(row, ["product", "name", "product name", "item"]) ?? "").trim();
-    const rawSku = String(pick(row, ["sku", "barcode", "item code"]) ?? "").trim();
+    const name = String(
+      pick(row, ["product", "name", "product name", "item name", "item", "title"]) ?? "",
+    ).trim();
+    const rawSku = String(
+      pick(row, ["sku", "sku id", "sku code", "product code", "item code", "barcode"]) ?? "",
+    ).trim();
 
     if (!name || !rawSku) {
       skipped += 1;
@@ -103,9 +113,10 @@ async function main() {
     }
 
     const sku = rawSku.toUpperCase();
-    const price = toNumber(pick(row, ["unit price", "price", "mrp"]));
+    const price = toNumber(pick(row, ["unit price", "mrp", "selling price", "price", "rate"]));
     const size = String(pick(row, ["size"]) ?? "").trim() || null;
-    const stock = toNumber(pick(row, ["stock", "qty", "quantity", "stock qty"])) ?? 0;
+    const stock =
+      toNumber(pick(row, ["stock", "qty", "quantity", "stock qty"])) ?? 0;
 
     await sql`
       INSERT INTO products (sku, name, size, price, stock_qty, low_stock_threshold)
