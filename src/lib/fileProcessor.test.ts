@@ -227,4 +227,19 @@ describe("parseFile", () => {
     );
     expect(blank.records[0].quantity).toBe(1);
   });
+
+  it("rejects negative and fractional quantities instead of mangling them", async () => {
+    const csv =
+      "Name,Sku Id,MRP,Quantity\nNegative,SKU-1,999,-5\nFraction,SKU-2,999,1.5\nText,SKU-3,999,abc";
+    const result = await parseFile(createCsvFile(csv));
+
+    expect(result.records.map((record) => record.quantity)).toEqual([1, 1, 1]);
+  });
+
+  it("keeps the Quantity header when the first row's quantity is blank", async () => {
+    const csv = "Name,Sku Id,MRP,Quantity\nFrock,SKU-1,999,\nShirt,SKU-2,499,3";
+    const result = await parseFile(createCsvFile(csv));
+
+    expect(result.records.map((record) => record.quantity)).toEqual([1, 3]);
+  });
 });

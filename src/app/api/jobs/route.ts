@@ -26,11 +26,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const labelCount =
+      typeof body.labelCount === "number" && Number.isFinite(body.labelCount)
+        ? Math.max(0, Math.trunc(body.labelCount))
+        : null;
+
     const sql = getDb();
     const rows = await sql`
-      INSERT INTO jobs (file_name, row_count)
-      VALUES (${body.fileName}, ${body.rowCount})
-      RETURNING id, file_name, row_count, created_at
+      INSERT INTO jobs (file_name, row_count, label_count)
+      VALUES (${body.fileName}, ${body.rowCount}, ${labelCount})
+      RETURNING id, file_name, row_count, label_count, created_at
     `;
 
     const row = rows[0];
@@ -38,6 +43,7 @@ export async function POST(request: Request) {
       id: row.id,
       fileName: row.file_name,
       rowCount: row.row_count,
+      labelCount: row.label_count === null ? null : Number(row.label_count),
       createdAt: new Date(row.created_at).toISOString(),
     };
 
@@ -60,7 +66,7 @@ export async function GET() {
   try {
     const sql = getDb();
     const rows = await sql`
-      SELECT id, file_name, row_count, created_at
+      SELECT id, file_name, row_count, label_count, created_at
       FROM jobs
       ORDER BY created_at DESC
     `;
@@ -69,6 +75,7 @@ export async function GET() {
       id: row.id,
       fileName: row.file_name,
       rowCount: row.row_count,
+      labelCount: row.label_count === null ? null : Number(row.label_count),
       createdAt: new Date(row.created_at).toISOString(),
     }));
 

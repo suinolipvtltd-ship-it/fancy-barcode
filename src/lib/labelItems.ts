@@ -11,12 +11,22 @@ export const MAX_LABELS_PER_ROW = 200;
 /** Safety valve: stop before building a PDF/ZPL with millions of labels. */
 export const MAX_TOTAL_LABELS = 5000;
 
-/** Total number of labels that would be printed for these records. */
+/**
+ * Total number of labels that would be printed for these records.
+ *
+ * Applies the same per-row and total caps as `expandByQuantity` so the number
+ * shown to the user matches what the generators can actually produce.
+ */
 export function countLabels(records: ProductRecord[]): number {
-  return records.reduce(
-    (total, record) => total + Math.max(1, Math.trunc(record.quantity || 1)),
-    0,
-  );
+  let total = 0;
+
+  for (const record of records) {
+    const requested = Math.max(1, Math.trunc(record.quantity || 1));
+    total += Math.min(requested, MAX_LABELS_PER_ROW);
+    if (total >= MAX_TOTAL_LABELS) return MAX_TOTAL_LABELS;
+  }
+
+  return total;
 }
 
 /**
@@ -29,6 +39,8 @@ export function expandByQuantity(records: ProductRecord[]): {
 } {
   const warnings: string[] = [];
   const expanded: ProductRecord[] = [];
+  let requestedTotal = 0;
+  let truncated = false;
 
   for (const record of records) {
     const requested = Math.max(1, Math.trunc(record.quantity || 1));
@@ -40,16 +52,22 @@ export function expandByQuantity(records: ProductRecord[]): {
       );
     }
 
+    requestedTotal += quantity;
+    if (truncated) continue; // keep counting, stop allocating
+
     for (let index = 0; index < quantity; index += 1) {
+      if (expanded.length >= MAX_TOTAL_LABELS) {
+        truncated = true;
+        break;
+      }
       expanded.push(record);
     }
   }
 
-  if (expanded.length > MAX_TOTAL_LABELS) {
+  if (truncated) {
     warnings.push(
-      `Only the first ${MAX_TOTAL_LABELS} labels were generated (${expanded.length} requested).`,
+      `Only the first ${MAX_TOTAL_LABELS} labels were generated (${requestedTotal} requested).`,
     );
-    return { records: expanded.slice(0, MAX_TOTAL_LABELS), warnings };
   }
 
   return { records: expanded, warnings };

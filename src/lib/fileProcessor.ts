@@ -21,11 +21,17 @@ function normalizeHeader(header: string): string {
   return header.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-/** Quantity from the sheet; blank, zero or unreadable means one label. */
+/**
+ * Quantity from the sheet; blank, zero, negative, fractional or unreadable
+ * values fall back to one label. The whole cell is validated — digits are not
+ * stripped, so "-5" does not become 5 and "1.5" does not become 15.
+ */
 function parseQuantity(raw: string): number {
-  if (!raw) return 1;
-  const parsed = Number.parseInt(raw.replace(/[^\d]/g, ""), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  const trimmed = raw.trim();
+  if (!trimmed) return 1;
+
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
 /** Maps each logical field to the actual header name found in the sheet. */
@@ -97,7 +103,11 @@ export async function parseFile(file: File): Promise<ParseResult> {
   }
 
   const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+  // `defval` keeps empty cells in the row objects, so a blank value in the
+  // first data row cannot hide its header from `resolveColumns`.
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: "",
+  });
 
   if (rows.length === 0) {
     return {
