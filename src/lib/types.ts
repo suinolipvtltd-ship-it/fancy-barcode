@@ -4,6 +4,11 @@ export interface ProductRecord {
   sku: string;
   mrp: string;
   barcodeValue: string;
+  /**
+   * How many labels to print for this row (the Quantity column). Defaults to 1
+   * when the file has no quantity column.
+   */
+  quantity: number;
   /** 1-based row index from the source file */
   rowNumber: number;
 }

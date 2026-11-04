@@ -8,6 +8,7 @@ import PrintReminder from "@/components/PrintReminder";
 import { parseFile } from "@/lib/fileProcessor";
 import { generatePdf } from "@/lib/pdfGenerator";
 import { generateZpl } from "@/lib/zplGenerator";
+import { countLabels } from "@/lib/labelItems";
 import { DEFAULT_LAYOUT } from "@/lib/constants";
 import type { ProductRecord, LabelConfig, LabelElement } from "@/lib/types";
 
@@ -129,7 +130,7 @@ export default function Home() {
         prevPdfUrl.current = url;
         setPdfUrl(url);
         setGenerationWarnings(result.warnings);
-        generatedRecordCount = records.length - result.warnings.length;
+        generatedRecordCount = result.labelCount;
 
         // Auto-trigger download
         const downloadName = `${(fileName ?? "labels").replace(/\.[^.]+$/, "")}.pdf`;
@@ -145,7 +146,7 @@ export default function Home() {
         const result = generateZpl({ records, config, dpi: config.dpi });
         setZplOutput(result.zpl);
         setGenerationWarnings(result.warnings);
-        generatedRecordCount = records.length - result.warnings.length;
+        generatedRecordCount = result.labelCount;
       }
     } catch (err) {
       console.error("[PAGE] Generation failed:", err);
@@ -202,6 +203,7 @@ export default function Home() {
   }, [zplOutput, fileName]);
 
   const hasRecords = records.length > 0;
+  const labelCount = countLabels(records);
   const hasErrors = parseErrors.length > 0;
 
   return (
@@ -231,7 +233,9 @@ export default function Home() {
             {hasRecords && (
               <p className="text-sm text-green-700">
                 ✓ {records.length} record{records.length !== 1 ? "s" : ""} parsed
-                successfully
+                {labelCount !== records.length && (
+                  <> · {labelCount} labels will be printed</>
+                )}
               </p>
             )}
             {parseWarnings.length > 0 && (

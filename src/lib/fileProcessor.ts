@@ -11,6 +11,7 @@ const COLUMN_ALIASES = {
   barcode: ["barcode", "barcodevalue", "barcodeno", "barcodenumber", "ean", "upc"],
   mrp: ["unitprice", "mrp", "sellingprice", "price", "rate", "amount"],
   sku: ["sku", "skuid", "skucode", "productcode", "itemcode", "code"],
+  quantity: ["quantity", "qty", "stock", "stockqty", "units", "pcs", "count"],
 } as const;
 
 type ColumnField = keyof typeof COLUMN_ALIASES;
@@ -18,6 +19,13 @@ type ColumnMap = Partial<Record<ColumnField, string>>;
 
 function normalizeHeader(header: string): string {
   return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Quantity from the sheet; blank, zero or unreadable means one label. */
+function parseQuantity(raw: string): number {
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw.replace(/[^\d]/g, ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 /** Maps each logical field to the actual header name found in the sheet. */
@@ -56,6 +64,9 @@ export function validateFileExtension(fileName: string): boolean {
  * (Unit Price / MRP / Selling Price). A barcode comes from the Barcode column
  * when present, otherwise the SKU ("Sku Id") is encoded as the barcode — that
  * is the whole point of the SKU column.
+ *
+ * An optional Quantity column is captured so the generators can print one
+ * label per unit.
  */
 export async function parseFile(file: File): Promise<ParseResult> {
   const records: ProductRecord[] = [];
@@ -141,6 +152,7 @@ export async function parseFile(file: File): Promise<ParseResult> {
       sku,
       mrp: read("mrp"),
       barcodeValue,
+      quantity: parseQuantity(read("quantity")),
       rowNumber,
     });
   }

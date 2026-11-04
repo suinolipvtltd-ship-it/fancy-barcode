@@ -9,6 +9,7 @@ import {
   LEFT_MARGIN,
 } from "@/lib/constants";
 import { validateBarcodeValue, generateBarcodeDataUrl } from "@/lib/barcodeUtils";
+import { expandByQuantity } from "@/lib/labelItems";
 import type { ProductRecord, LabelConfig } from "@/lib/types";
 
 export interface PdfGeneratorOptions {
@@ -19,6 +20,8 @@ export interface PdfGeneratorOptions {
 export interface PdfGeneratorResult {
   blob: Blob;
   warnings: string[];
+  /** Number of labels actually laid out (rows are repeated by quantity). */
+  labelCount: number;
 }
 
 /** Number of labels per row in the 2-up layout */
@@ -61,10 +64,17 @@ export async function generatePdf(
   console.log("[PDF] valid records:", validRecords.length, "| warnings:", warnings.length);
   console.log("[PDF] barcode images generated:", barcodeImages.size);
 
+  // One label per unit: a row with Quantity 3 prints three identical labels.
+  const expanded = expandByQuantity(validRecords);
+  warnings.push(...expanded.warnings);
+  const labelRecords = expanded.records;
+
+  console.log("[PDF] labels to print:", labelRecords.length);
+
   // Build rows of label pairs
   const rows: ProductRecord[][] = [];
-  for (let i = 0; i < validRecords.length; i += LABELS_PER_ROW) {
-    rows.push(validRecords.slice(i, i + LABELS_PER_ROW));
+  for (let i = 0; i < labelRecords.length; i += LABELS_PER_ROW) {
+    rows.push(labelRecords.slice(i, i + LABELS_PER_ROW));
   }
 
   // Each row of labels gets its own page so every label pair prints on a
@@ -110,7 +120,7 @@ export async function generatePdf(
     if (!blob || blob.size === 0) {
       throw new PdfGenerationError("Generated PDF blob is empty");
     }
-    return { blob, warnings };
+    return { blob, warnings, labelCount: labelRecords.length };
   } catch (error) {
     console.error("[PDF] error during pdf generation:", error);
     if (error instanceof PdfGenerationError) {

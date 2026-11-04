@@ -27,6 +27,7 @@ const baseRecord: ProductRecord = {
   sku: "SKU-12345",
   mrp: "199.00",
   barcodeValue: "1234567890",
+  quantity: 1,
   rowNumber: 1,
 };
 
