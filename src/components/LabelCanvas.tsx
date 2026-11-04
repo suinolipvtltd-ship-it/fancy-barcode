@@ -105,7 +105,7 @@ function renderElement(
     case "mrpSku": {
       const showMrp = config.showMrp !== false;
       const text = showMrp
-        ? `MRP Rs ${formatPrice(record.mrp)}/${record.sku}`
+        ? `Rs ${formatPrice(record.mrp)}/${record.sku}`
         : record.sku;
       return (
         <Text key={key} style={styles.mrpSku}>
@@ -145,7 +145,7 @@ function renderElement(
     case "mrp":
       return (
         <Text key={key} style={styles.mrp}>
-          MRP Rs {formatPrice(record.mrp)}
+          Rs {formatPrice(record.mrp)}
         </Text>
       );
     default:

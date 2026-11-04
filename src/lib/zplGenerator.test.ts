@@ -95,7 +95,7 @@ describe("generateZpl", () => {
     expect(result.zpl).not.toContain("^FDSKU-001^FS");
   });
 
-  it("always includes barcode and MRP", () => {
+  it("always includes barcode and price", () => {
     const config: LabelConfig = {
       includeProductName: false,
       includeSku: false,
@@ -107,7 +107,7 @@ describe("generateZpl", () => {
     const result = generateZpl({ records: [sampleRecord], config, dpi: 203 });
     expect(result.zpl).toContain("^BC");
     expect(result.zpl).toContain("^FD1234567890^FS");
-    expect(result.zpl).toContain("^FDMRP: 9.99^FS");
+    expect(result.zpl).toContain("^FDRs 9.99^FS");
   });
 
   it("starts each label with ^XA and ends with ^XZ", () => {

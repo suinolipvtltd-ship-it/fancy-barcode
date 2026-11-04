@@ -71,8 +71,8 @@ export function generateZpl(options: ZplOptions): ZplGeneratorResult {
         yPos += 30;
       }
 
-      // MRP (always shown)
-      lines.push(`^FO20,${yPos}^A0N,22,22^FDMRP: ${record.mrp}^FS`);
+      // Price (always shown)
+      lines.push(`^FO20,${yPos}^A0N,22,22^FDRs ${record.mrp}^FS`);
 
       lines.push("^XZ");
       return lines.join("\n");
