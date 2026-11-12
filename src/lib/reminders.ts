@@ -24,6 +24,7 @@ interface ReminderQueryRow {
   sold_at: string | Date;
   child_gender: string | null;
   child_age_years: number | null;
+  child_birthday: string | Date | null;
   items: ReminderSaleItem[] | null;
 }
 
@@ -54,6 +55,7 @@ function toReminder(row: ReminderQueryRow): ReminderRecord {
         ? row.child_gender
         : null,
     childAgeYears: row.child_age_years === null ? null : Number(row.child_age_years),
+    childBirthday: row.child_birthday === null ? null : isoDay(row.child_birthday),
     items: (row.items ?? []).map((item) => ({
       id: item.id ?? null,
       name: item.name ?? null,
@@ -87,6 +89,7 @@ export async function listReminders({
       s.sold_at,
       ce.child_gender,
       ce.child_age_years,
+      ce.child_birthday,
       COALESCE(
         (
           SELECT json_agg(
@@ -162,6 +165,7 @@ export async function getReminder(id: string): Promise<ReminderRecord | null> {
       s.sold_at,
       ce.child_gender,
       ce.child_age_years,
+      ce.child_birthday,
       COALESCE(
         (
           SELECT json_agg(
@@ -217,7 +221,7 @@ export async function updateReminder(
   const sql = getDb();
 
   const ownerRows = await sql`
-    SELECT id, sale_id, child_gender, child_age_years
+    SELECT id, sale_id, child_gender, child_age_years, child_birthday
     FROM calendar_events
     WHERE id = ${id} AND dismissed_at IS NULL
     LIMIT 1
@@ -234,10 +238,17 @@ export async function updateReminder(
     patch.childAgeYears === undefined
       ? ((owner.child_age_years as number | null) ?? null)
       : patch.childAgeYears;
+  const nextBirthday =
+    patch.childBirthday === undefined
+      ? owner.child_birthday === null
+        ? null
+        : isoDay(owner.child_birthday as string | Date)
+      : patch.childBirthday || null;
 
   await sql`
     UPDATE calendar_events
-    SET child_gender = ${nextGender}, child_age_years = ${nextAge}
+    SET child_gender = ${nextGender}, child_age_years = ${nextAge},
+        child_birthday = ${nextBirthday}::date
     WHERE id = ${id}
   `;
 

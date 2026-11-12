@@ -153,6 +153,9 @@ ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS dismissed_at TIMESTAMPTZ;
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS child_gender VARCHAR(16);
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS child_age_years SMALLINT;
 
+-- The child's actual birthday, so the calendar can highlight it. Optional.
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS child_birthday DATE;
+
 CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date
   ON calendar_events (event_date);
 
