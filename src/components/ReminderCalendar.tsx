@@ -133,6 +133,15 @@ function childSummary(reminder: ReminderRecord): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
+/** `12 Mar` — day and month only, the year of the birthday is not meaningful. */
+function birthdayLabel(isoDay: string): string {
+  const [year, month, day] = isoDay.split("-").map(Number);
+  return new Date(year, month - 1, day, 12).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 /** `https://wa.me/<country><number>?text=…` — assumes Indian numbers. */
 function whatsappLink(reminder: ReminderRecord): string | null {
   if (!reminder.customerPhone) return null;
@@ -214,6 +223,7 @@ function ReminderEditor({
   const [age, setAge] = useState(
     reminder.childAgeYears === null ? "" : String(reminder.childAgeYears),
   );
+  const [birthday, setBirthday] = useState(reminder.childBirthday ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,6 +256,7 @@ function ReminderEditor({
           id: reminder.id,
           childGender: gender === "" ? null : gender,
           childAgeYears: age.trim() === "" ? null : Number(age),
+          childBirthday: birthday.trim() === "" ? null : birthday,
           items: items
             .map((item) => ({
               id: item.id,
@@ -267,9 +278,9 @@ function ReminderEditor({
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+    <div className="mt-3 space-y-3 rounded-lg border border-slate-700 bg-slate-800/70 p-3">
       <div>
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-300">
           Products
         </p>
         <div className="space-y-2">
@@ -279,26 +290,26 @@ function ReminderEditor({
                 value={item.name}
                 onChange={(event) => update(index, { name: event.target.value })}
                 placeholder="Product"
-                className="min-w-0 flex-1 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
+                className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500"
               />
               <input
                 value={item.size}
                 onChange={(event) => update(index, { size: event.target.value })}
                 placeholder="Size"
-                className="w-20 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
+                className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500"
               />
               <input
                 value={item.qty}
                 onChange={(event) => update(index, { qty: event.target.value })}
                 type="number"
                 min="1"
-                className="w-16 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
+                className="w-16 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100"
               />
               <button
                 type="button"
                 onClick={() => removeRow(index)}
                 title="Remove product"
-                className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-gray-500 hover:bg-blue-50"
+                className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-400 hover:bg-slate-700"
               >
                 ✕
               </button>
@@ -308,7 +319,7 @@ function ReminderEditor({
         <button
           type="button"
           onClick={addRow}
-          className="mt-2 rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+          className="mt-2 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-blue-300 hover:bg-slate-700"
         >
           + Add product
         </button>
@@ -316,7 +327,7 @@ function ReminderEditor({
 
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-300">
             Order for
           </p>
           <div className="flex gap-1">
@@ -333,8 +344,8 @@ function ReminderEditor({
                 onClick={() => setGender(value)}
                 className={`rounded border px-3 py-1 text-xs ${
                   gender === value
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-blue-200 bg-white text-gray-700 hover:bg-blue-50"
+                    ? "border-blue-500 bg-blue-600 text-white"
+                    : "border-slate-600 bg-slate-900 text-slate-300 hover:bg-slate-700"
                 }`}
               >
                 {label}
@@ -343,8 +354,8 @@ function ReminderEditor({
           </div>
         </div>
 
-        <label className="text-xs text-gray-600">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+        <label className="text-xs text-slate-400">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-blue-300">
             Child age (years)
           </span>
           <input
@@ -354,12 +365,24 @@ function ReminderEditor({
             min="0"
             max="25"
             placeholder="e.g. 4"
-            className="w-28 rounded border border-blue-200 bg-white px-2 py-1 text-sm"
+            className="w-28 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500"
+          />
+        </label>
+
+        <label className="text-xs text-slate-400">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-green-300">
+            Birthday
+          </span>
+          <input
+            value={birthday}
+            onChange={(event) => setBirthday(event.target.value)}
+            type="date"
+            className="w-40 rounded border border-green-700/60 bg-slate-900 px-2 py-1 text-sm text-slate-100 scheme-dark"
           />
         </label>
       </div>
 
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -374,14 +397,14 @@ function ReminderEditor({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="rounded border border-blue-200 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-blue-50"
+          className="rounded border border-slate-600 bg-slate-900 px-3 py-1 text-xs text-slate-300 hover:bg-slate-700"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={() => onRemoved(reminder)}
-          className="ml-auto rounded border border-red-200 bg-white px-3 py-1 text-xs text-red-700 hover:bg-red-50"
+          className="ml-auto rounded border border-red-900 bg-slate-900 px-3 py-1 text-xs text-red-400 hover:bg-red-950"
         >
           Remove reminder
         </button>
@@ -413,39 +436,44 @@ function ReminderCard({
   const whatsapp = whatsappLink(reminder);
 
   return (
-    <li className="rounded-lg border border-blue-100 bg-white p-3">
+    <li className="rounded-lg border border-slate-800 bg-slate-900 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {showDate && (
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+              <span className="rounded bg-blue-900/60 px-2 py-0.5 text-[11px] font-semibold text-blue-200">
                 {shortDayLabel(reminder.eventDate)}
               </span>
             )}
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-slate-100">
               {reminder.customerName || "Walk-in customer"}
-              <span className="ml-1 text-xs font-normal tabular-nums text-blue-700">
+              <span className="ml-1 text-xs font-normal tabular-nums text-blue-300">
                 ({reminder.externalId})
               </span>
             </span>
             {reminder.customerPhone && (
               <a
                 href={`tel:${reminder.customerPhone}`}
-                className="text-xs text-gray-600 hover:text-blue-700"
+                className="text-xs text-slate-400 hover:text-blue-300"
               >
                 {reminder.customerPhone}
               </a>
             )}
             {child && (
-              <span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">
+              <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-blue-200">
                 {child}
+              </span>
+            )}
+            {reminder.childBirthday && (
+              <span className="rounded bg-green-200 px-2 py-0.5 text-[11px] font-medium text-green-900">
+                🎂 {birthdayLabel(reminder.childBirthday)}
               </span>
             )}
           </div>
 
-          <p className="mt-1 text-sm text-gray-700">{itemSummary(reminder)}</p>
+          <p className="mt-1 text-sm text-slate-300">{itemSummary(reminder)}</p>
 
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-slate-400">
             Sold{" "}
             {new Date(reminder.soldAt).toLocaleDateString("en-IN", {
               day: "numeric",
@@ -462,7 +490,7 @@ function ReminderCard({
               href={whatsapp}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded border border-green-300 bg-white px-2 py-1 text-xs text-green-700 hover:bg-green-50"
+              className="rounded border border-green-800 bg-slate-900 px-2 py-1 text-xs text-green-300 hover:bg-green-950"
             >
               WhatsApp
             </a>
@@ -472,7 +500,7 @@ function ReminderCard({
               href={reminder.htmlLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+              className="rounded border border-slate-700 px-2 py-1 text-xs text-blue-300 hover:bg-slate-800"
             >
               Google event
             </a>
@@ -480,7 +508,7 @@ function ReminderCard({
           <button
             type="button"
             onClick={onToggleEdit}
-            className="rounded border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+            className="rounded border border-slate-700 px-2 py-1 text-xs text-blue-300 hover:bg-slate-800"
           >
             {editing ? "Close" : "Edit details"}
           </button>
@@ -651,10 +679,10 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
   }
 
   const monthButton =
-    "rounded border border-blue-200 bg-white px-2 py-1 text-sm text-blue-700 hover:bg-blue-50";
+    "rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-blue-300 hover:bg-slate-800";
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 text-slate-100">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -675,7 +703,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
             ‹
           </button>
 
-          <h2 className="min-w-36 text-center text-base font-semibold text-blue-900">
+          <h2 className="min-w-36 text-center text-base font-semibold text-blue-100">
             {monthLabel(month)}
           </h2>
 
@@ -704,7 +732,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
               setMonth(`${year}-${pad(monthStart(month).getMonth() + 1)}`);
               setEditingId(null);
             }}
-            className="rounded border border-blue-200 bg-white px-2 py-1 text-sm text-blue-800"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-blue-200"
             aria-label="Jump to year"
           >
             {years.map((year) => (
@@ -721,21 +749,21 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
               setSelected(today);
               setEditingId(null);
             }}
-            className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-blue-300 hover:bg-slate-800"
           >
             Today
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-slate-400">
             {loading
               ? "Loading…"
               : `${visibleReminders.length} reminder${
                   visibleReminders.length === 1 ? "" : "s"
                 }`}
           </span>
-          <div className="flex overflow-hidden rounded border border-blue-200">
+          <div className="flex overflow-hidden rounded border border-slate-700">
             {(
               [
                 ["calendar", "Calendar"],
@@ -749,7 +777,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                 className={`px-3 py-1 text-xs ${
                   view === value
                     ? "bg-blue-600 text-white"
-                    : "bg-white text-blue-700 hover:bg-blue-50"
+                    : "bg-slate-900 text-blue-300 hover:bg-slate-800"
                 }`}
               >
                 {label}
@@ -759,13 +787,13 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-900">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">
         <label className="flex items-center gap-1">
           <span className="font-semibold uppercase tracking-wide">Gender</span>
           <select
             value={genderFilter}
             onChange={(event) => setGenderFilter(event.target.value as GenderFilter)}
-            className="rounded border border-blue-200 bg-white px-2 py-1"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
           >
             <option value="all">All</option>
             <option value="girl">Girl</option>
@@ -778,7 +806,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
           <select
             value={ageFilter}
             onChange={(event) => setAgeFilter(event.target.value)}
-            className="rounded border border-blue-200 bg-white px-2 py-1"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
           >
             {AGE_FILTERS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -793,7 +821,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
           <select
             value={costFilter}
             onChange={(event) => setCostFilter(event.target.value)}
-            className="rounded border border-blue-200 bg-white px-2 py-1"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
           >
             {COST_FILTERS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -811,37 +839,42 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
               setAgeFilter("all");
               setCostFilter("all");
             }}
-            className="rounded border border-blue-300 bg-white px-2 py-1 text-blue-700 hover:bg-blue-100"
+            className="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-blue-300 hover:bg-slate-700"
           >
             Clear filters
           </button>
         )}
 
-        <span className="ml-auto text-blue-700">
+        <span className="flex items-center gap-1 text-green-300">
+          <span className="inline-block h-3 w-3 rounded bg-green-200" />
+          Birthday
+        </span>
+
+        <span className="ml-auto text-blue-300">
           {visibleReminders.length} of {monthReminders.length} this month
         </span>
       </div>
 
       {error && (
-        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded border border-red-900 bg-red-950/60 p-3 text-sm text-red-300">
           {error}
         </p>
       )}
 
       {!loading && !error && monthReminders.length === 0 && (
-        <p className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        <p className="rounded border border-slate-700 bg-slate-900 p-3 text-sm text-blue-200">
           No reminders in {monthLabel(month)}. Follow-ups are booked about a year after
           the sale — use <strong>›</strong> or the year picker to move forward.
         </p>
       )}
 
       {removed && (
-        <div className="flex items-center justify-between rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+        <div className="flex items-center justify-between rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200">
           <span>Removed {removed.customerName || "reminder"}.</span>
           <button
             type="button"
             onClick={undo}
-            className="rounded border border-blue-200 bg-white px-3 py-1 text-xs text-blue-700 hover:bg-blue-100"
+            className="rounded border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-blue-300 hover:bg-slate-700"
           >
             Undo
           </button>
@@ -849,15 +882,15 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
       )}
 
       <div
-        className={`overflow-hidden rounded-lg border border-blue-100 bg-white ${
+        className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-900 ${
           view === "calendar" ? "" : "hidden"
         }`}
       >
-        <div className="grid grid-cols-7 border-b border-blue-100 bg-blue-50">
+        <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-950/60">
           {WEEKDAYS.map((label) => (
             <div
               key={label}
-              className="px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-700"
+              className="px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-300"
             >
               {label}
             </div>
@@ -871,6 +904,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
             const rows = visibleByDay[iso] ?? [];
             const isToday = iso === today;
             const isSelected = iso === selected;
+            const birthdayDay = rows.some((reminder) => reminder.childBirthday !== null);
 
             return (
               <button
@@ -880,8 +914,13 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                   setSelected(iso);
                   setEditingId(null);
                 }}
-                className={`min-h-24 border-b border-r border-blue-50 p-1.5 text-left align-top last:border-r-0 ${
-                  inMonth ? "bg-white" : "bg-blue-50/40"
+                title={birthdayDay ? "Birthday reminder" : undefined}
+                className={`min-h-24 border-b border-r border-slate-800 p-1.5 text-left align-top last:border-r-0 ${
+                  birthdayDay
+                    ? "bg-green-200"
+                    : inMonth
+                      ? "bg-slate-900"
+                      : "bg-slate-950/70"
                 } ${isSelected ? "ring-2 ring-inset ring-blue-500" : ""}`}
               >
                 <div className="flex items-center justify-between">
@@ -889,15 +928,23 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
                       isToday
                         ? "bg-blue-600 font-semibold text-white"
-                        : inMonth
-                          ? "text-gray-900"
-                          : "text-gray-400"
+                        : birthdayDay
+                          ? "font-semibold text-green-950"
+                          : inMonth
+                            ? "text-slate-100"
+                            : "text-slate-500"
                     }`}
                   >
                     {date.getDate()}
                   </span>
                   {rows.length > 2 && (
-                    <span className="text-[10px] text-gray-400">+{rows.length - 2}</span>
+                    <span
+                      className={`text-[10px] ${
+                        birthdayDay ? "text-green-900" : "text-slate-500"
+                      }`}
+                    >
+                      +{rows.length - 2}
+                    </span>
                   )}
                 </div>
 
@@ -905,7 +952,13 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                   {rows.slice(0, 2).map((reminder) => (
                     <span
                       key={reminder.id}
-                      className="block truncate rounded bg-blue-50 px-1 py-0.5 text-[11px] text-blue-900"
+                      className={`block truncate rounded px-1 py-0.5 text-[11px] ${
+                        reminder.childBirthday
+                          ? "bg-green-100 text-green-950"
+                          : birthdayDay
+                            ? "bg-slate-900/80 text-slate-100"
+                            : "bg-slate-800 text-blue-100"
+                      }`}
                     >
                       {reminder.customerName || "Reminder"}
                       {reminder.childGender === "girl"
@@ -913,6 +966,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                         : reminder.childGender === "boy"
                           ? " · boy"
                           : ""}
+                      {reminder.childBirthday ? " 🎂" : ""}
                     </span>
                   ))}
                 </div>
@@ -925,7 +979,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
       {view === "month" ? (
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-blue-900">
+            <h3 className="text-sm font-semibold text-blue-100">
               {monthLabel(month)} · all reminders
             </h3>
             <div className="flex items-center gap-2">
@@ -934,8 +988,8 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
                 onClick={() => setEditAll((value) => !value)}
                 className={`rounded border px-3 py-1 text-xs ${
                   editAll
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                    ? "border-blue-500 bg-blue-600 text-white"
+                    : "border-slate-700 bg-slate-900 text-blue-300 hover:bg-slate-800"
                 }`}
               >
                 {editAll ? "Close all editors" : "Edit all"}
@@ -944,7 +998,7 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
           </div>
 
           {visibleReminders.length === 0 ? (
-            <p className="rounded border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+            <p className="rounded border border-slate-800 bg-slate-900 p-4 text-sm text-blue-200">
               Nothing matches these filters this month.
             </p>
           ) : (
@@ -972,15 +1026,15 @@ export default function ReminderCalendar({ initial, initialMonth }: Props) {
         </div>
       ) : (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-blue-900">
+          <h3 className="mb-2 text-sm font-semibold text-blue-100">
             {dayLabel(selected)}
-            <span className="ml-2 font-normal text-gray-500">
+            <span className="ml-2 font-normal text-slate-400">
               {dayReminders.length} reminder{dayReminders.length === 1 ? "" : "s"}
             </span>
           </h3>
 
           {dayReminders.length === 0 ? (
-            <p className="rounded border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+            <p className="rounded border border-slate-800 bg-slate-900 p-4 text-sm text-blue-200">
               Nothing booked for this day.
             </p>
           ) : (

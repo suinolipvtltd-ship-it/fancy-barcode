@@ -140,6 +140,17 @@ export async function PATCH(request: Request) {
     }
   }
 
+  if (
+    body.childBirthday !== undefined &&
+    body.childBirthday !== null &&
+    !DAY_PATTERN.test(String(body.childBirthday))
+  ) {
+    return Response.json(
+      { error: "Field 'childBirthday' must be YYYY-MM-DD or null." },
+      { status: 400 },
+    );
+  }
+
   if (body.items !== undefined && !Array.isArray(body.items)) {
     return Response.json({ error: "Field 'items' must be an array." }, { status: 400 });
   }
@@ -154,6 +165,8 @@ export async function PATCH(request: Request) {
           : body.childAgeYears === null
             ? null
             : Number(body.childAgeYears),
+      childBirthday:
+        body.childBirthday === undefined ? undefined : body.childBirthday || null,
     });
 
     if (!reminder) {

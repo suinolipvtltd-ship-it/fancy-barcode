@@ -161,6 +161,8 @@ export interface ReminderRecord {
   soldAt: string;
   childGender: ChildGender | null;
   childAgeYears: number | null;
+  /** The child's birthday, `YYYY-MM-DD`, or null when not captured yet. */
+  childBirthday: string | null;
   items: ReminderSaleItem[];
 }
 
@@ -169,6 +171,7 @@ export interface UpdateReminderRequest {
   id: string;
   childGender?: ChildGender | null;
   childAgeYears?: number | null;
+  childBirthday?: string | null;
   items?: {
     id?: string | null;
     name?: string | null;

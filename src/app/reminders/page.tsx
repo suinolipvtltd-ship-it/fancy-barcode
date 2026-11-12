@@ -49,34 +49,36 @@ export default async function RemindersPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Reminders</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Birthday follow-ups booked from Swipe sales — customer, phone, product, size,
-          and who the order was for.
-        </p>
-        {nextReminder && (
-          <p className="mt-2 text-sm text-gray-800">
-            Next reminder:{" "}
-            <strong className="font-semibold">
-              {new Date(`${nextReminder}T12:00:00`).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </strong>
+    <main className="w-full flex-1 bg-slate-950 pb-16 text-slate-100">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+        <header className="mb-6">
+          <h1 className="text-xl font-semibold text-slate-100">Reminders</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Birthday follow-ups booked from Swipe sales — customer, phone, product, size,
+            and who the order was for.
           </p>
-        )}
-      </header>
+          {nextReminder && (
+            <p className="mt-2 text-sm text-slate-200">
+              Next reminder:{" "}
+              <strong className="font-semibold">
+                {new Date(`${nextReminder}T12:00:00`).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </strong>
+            </p>
+          )}
+        </header>
 
-      {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </p>
-      ) : (
-        <ReminderCalendar initial={reminders} initialMonth={initialMonth} />
-      )}
+        {error ? (
+          <p className="rounded border border-red-900 bg-red-950/60 p-3 text-sm text-red-300">
+            {error}
+          </p>
+        ) : (
+          <ReminderCalendar initial={reminders} initialMonth={initialMonth} />
+        )}
+      </div>
     </main>
   );
 }
