@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ChildGender,
   CustomerDetail,
@@ -10,7 +10,6 @@ import type {
 import {
   ageFromBirthday,
   birthdayLabel,
-  phoneDigits,
   smsReviewLink,
   telLink,
   whatsappReviewLink,
@@ -71,18 +70,6 @@ function saleItemsLine(sale: CustomerSale): string {
       return parts.join(" · ");
     })
     .join(", ");
-}
-
-function matchesQuery(customer: CustomerRecord, query: string): boolean {
-  const term = query.trim().toLowerCase();
-  if (!term) return true;
-  if ((customer.name ?? "").toLowerCase().includes(term)) return true;
-  if ((customer.phone ?? "").toLowerCase().includes(term)) return true;
-  const digits = phoneDigits(term);
-  if (digits.length >= 3 && phoneDigits(customer.phone).includes(digits)) return true;
-  return customer.children.some((child) =>
-    (child.name ?? "").toLowerCase().includes(term),
-  );
 }
 
 interface DraftChild {
@@ -594,8 +581,54 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initial[0]?.id ?? null);
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(initial.length === 0);
   const [error, setError] = useState<string | null>(null);
+
+  // Which customer the detail panel currently belongs to. A PATCH/GET that
+  // resolves after the user picked someone else must not overwrite it.
+  const activeIdRef = useRef<string | null>(selectedId);
+  useEffect(() => {
+    activeIdRef.current = selectedId;
+  }, [selectedId]);
+
+  // Search on the server so customers beyond the preloaded 500 rows are found.
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+
+    const term = query.trim();
+    let cancelled = false;
+    setSearching(true);
+
+    const timer = setTimeout(() => {
+      fetch(`/api/customers${term ? `?q=${encodeURIComponent(term)}` : ""}`)
+        .then(async (response) => {
+          const data = await response.json().catch(() => null);
+          if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+          return data.customers as CustomerRecord[];
+        })
+        .then((rows) => {
+          if (!cancelled) setCustomers(rows);
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setError(e instanceof Error ? e.message : "Could not search customers.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -643,7 +676,6 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
       reviewedAt: next.reviewedAt,
       createdAt: next.createdAt,
     };
-    setDetail(next);
     setCustomers((prev) => {
       const exists = prev.some((row) => row.id === record.id);
       const list = exists
@@ -653,21 +685,24 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
         (b.lastPurchaseAt ?? b.createdAt).localeCompare(a.lastPurchaseAt ?? a.createdAt),
       );
     });
+    // Only refresh the detail panel when it still shows this customer.
+    if (activeIdRef.current === record.id) setDetail(next);
   }, []);
 
   const removeFromList = useCallback((id: string) => {
     setCustomers((prev) => prev.filter((row) => row.id !== id));
-    setSelectedId((current) => (current === id ? null : current));
-    setDetail(null);
+    if (activeIdRef.current === id) {
+      setSelectedId(null);
+      setDetail(null);
+    }
   }, []);
 
   const visible = useMemo(
     () =>
-      customers.filter(
-        (customer) =>
-          matchesQuery(customer, query) && (!reviewDueOnly || customer.reviewedAt === null),
-      ),
-    [customers, query, reviewDueOnly],
+      reviewDueOnly
+        ? customers.filter((customer) => customer.reviewedAt === null)
+        : customers,
+    [customers, reviewDueOnly],
   );
 
   const dueCount = useMemo(
@@ -726,7 +761,9 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
               />
               Review pending ({dueCount})
             </label>
-            <span className="text-slate-500">{visible.length} shown</span>
+            <span className="text-slate-500">
+              {searching ? "Searching…" : `${visible.length} shown`}
+            </span>
           </div>
           <button
             type="button"

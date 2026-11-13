@@ -1,7 +1,7 @@
 import { authenticateRequest } from "@/lib/apiAuth";
+import { parseUpdateCustomer } from "@/lib/customerValidation";
 import { getDb } from "@/lib/db";
 import { getCustomer, updateCustomer } from "@/lib/customers";
-import type { UpdateCustomerRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,38 +41,22 @@ export async function PATCH(request: Request, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  let body: UpdateCustomerRequest;
+  let raw: unknown;
   try {
-    body = (await request.json()) as UpdateCustomerRequest;
+    raw = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (body.children !== undefined && !Array.isArray(body.children)) {
-    return Response.json({ error: "Field 'children' must be an array." }, { status: 400 });
-  }
-
-  for (const child of Array.isArray(body.children) ? body.children : []) {
-    if (child.gender !== undefined && child.gender !== null && child.gender !== "girl" && child.gender !== "boy") {
-      return Response.json(
-        { error: "Child 'gender' must be 'girl', 'boy' or null." },
-        { status: 400 },
-      );
-    }
-    if (
-      child.birthday !== undefined &&
-      child.birthday !== null &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(String(child.birthday))
-    ) {
-      return Response.json(
-        { error: "Child 'birthday' must be YYYY-MM-DD or null." },
-        { status: 400 },
-      );
-    }
+  // Validate the whole body before any write: a wrong-typed `phone` would
+  // otherwise blank the column, and `"reviewed": "false"` is truthy.
+  const parsed = parseUpdateCustomer(raw);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: 400 });
   }
 
   try {
-    const customer = await updateCustomer(id, body);
+    const customer = await updateCustomer(id, parsed.value);
     if (!customer) {
       return Response.json({ error: "Customer not found." }, { status: 404 });
     }

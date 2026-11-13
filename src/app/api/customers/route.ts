@@ -1,6 +1,6 @@
 import { authenticateRequest } from "@/lib/apiAuth";
+import { parseCreateCustomer } from "@/lib/customerValidation";
 import { createCustomer, listCustomers } from "@/lib/customers";
-import type { CreateCustomerRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,24 +37,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: CreateCustomerRequest;
+  let raw: unknown;
   try {
-    body = (await request.json()) as CreateCustomerRequest;
+    raw = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const hasName = typeof body?.name === "string" && body.name.trim() !== "";
-  const hasPhone = typeof body?.phone === "string" && body.phone.trim() !== "";
+  // Validate before the insert so `children: [null]` or `phone: 42` is rejected
+  // rather than creating a customer and failing afterwards.
+  const parsed = parseCreateCustomer(raw);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const body = parsed.value;
+  const hasName = typeof body.name === "string" && body.name.trim() !== "";
+  const hasPhone = typeof body.phone === "string" && body.phone.trim() !== "";
   if (!hasName && !hasPhone) {
     return Response.json(
       { error: "Provide at least a name or a phone number." },
       { status: 400 },
     );
-  }
-
-  if (body.children !== undefined && !Array.isArray(body.children)) {
-    return Response.json({ error: "Field 'children' must be an array." }, { status: 400 });
   }
 
   try {
