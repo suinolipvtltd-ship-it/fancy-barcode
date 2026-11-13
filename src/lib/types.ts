@@ -166,6 +166,99 @@ export interface ReminderRecord {
   items: ReminderSaleItem[];
 }
 
+/* -------------------------------------------------------------------------- */
+/* CRM                                                                        */
+/* -------------------------------------------------------------------------- */
+
+/** One of a customer's children, captured for birthday follow-ups. */
+export interface CustomerChild {
+  id: string;
+  name: string | null;
+  gender: ChildGender | null;
+  /** `YYYY-MM-DD`, or null when the birthday is not known. */
+  birthday: string | null;
+}
+
+/** A row in the CRM list. Totals are computed from recorded sales. */
+export interface CustomerRecord {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  note: string | null;
+  /** How many recorded sales this phone number has. */
+  visits: number;
+  /** Sum of `sales.total_amount`, as a decimal string, or null when unknown. */
+  totalSpend: string | null;
+  firstPurchaseAt: string | null;
+  lastPurchaseAt: string | null;
+  children: CustomerChild[];
+  /** When the shop last asked for a Google review. */
+  reviewRequestedAt: string | null;
+  /** When the review was left. Null means it is still due. */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+/** A line item on a past sale, as shown in the CRM purchase history. */
+export interface CustomerSaleItem {
+  sku: string | null;
+  name: string | null;
+  size: string | null;
+  qty: number;
+  unitPrice: string | null;
+}
+
+/** One past purchase. */
+export interface CustomerSale {
+  id: string;
+  externalId: string;
+  source: string;
+  soldAt: string;
+  totalAmount: string | null;
+  items: CustomerSaleItem[];
+}
+
+/** GET /api/customers/[id] response. */
+export interface CustomerDetail extends CustomerRecord {
+  sales: CustomerSale[];
+}
+
+/** POST /api/customers request body. */
+export interface CreateCustomerRequest {
+  name?: string | null;
+  phone?: string | null;
+  note?: string | null;
+  children?: {
+    name?: string | null;
+    gender?: ChildGender | null;
+    birthday?: string | null;
+  }[];
+}
+
+/** PATCH /api/customers/[id] request body. */
+export interface UpdateCustomerRequest {
+  name?: string | null;
+  phone?: string | null;
+  note?: string | null;
+  /** Pass to replace the whole list of children; omit to leave untouched. */
+  children?: {
+    id?: string | null;
+    name?: string | null;
+    gender?: ChildGender | null;
+    birthday?: string | null;
+  }[];
+  /**
+   * `true` stamps `review_requested_at` with now, `false` clears it.
+   * Omit to leave untouched.
+   */
+  reviewRequested?: boolean;
+  /**
+   * `true` stamps `reviewed_at` with now, `false` clears it.
+   * Omit to leave untouched.
+   */
+  reviewed?: boolean;
+}
+
 /** PATCH /api/reminders request body */
 export interface UpdateReminderRequest {
   id: string;

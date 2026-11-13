@@ -171,3 +171,70 @@ WHERE NOT EXISTS (
   SELECT 1 FROM calendar_events ce WHERE ce.sale_id = s.id
 )
 ON CONFLICT (sale_id) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- CRM (customers, their children, and Google-review follow-ups).
+-- Safe to re-run.
+-- ---------------------------------------------------------------------------
+
+-- When the shop last asked for a review, and when the customer actually left
+-- one. NULL reviewed_at means "still owes us a review".
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS review_requested_at TIMESTAMPTZ;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_customers_review_due
+  ON customers (last_purchase_at DESC)
+  WHERE reviewed_at IS NULL;
+
+-- A customer can have any number of children; their birthdays drive the
+-- reminder calendar and the "who is this order for" filters.
+CREATE TABLE IF NOT EXISTS customer_children (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES customers (id) ON DELETE CASCADE,
+  name VARCHAR(120),
+  gender VARCHAR(16),
+  birthday DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_children_customer
+  ON customer_children (customer_id);
+
+CREATE INDEX IF NOT EXISTS idx_customer_children_birthday
+  ON customer_children (birthday);
+
+-- Backfill: create a customer row for every phone number seen in `sales` that
+-- has no customer yet, so old invoices show up in the CRM.
+INSERT INTO customers (phone, name, first_purchase_at, last_purchase_at)
+SELECT
+  s.customer_phone,
+  (array_agg(s.customer_name ORDER BY s.sold_at DESC)
+     FILTER (WHERE s.customer_name IS NOT NULL))[1],
+  MIN(s.sold_at),
+  MAX(s.sold_at)
+FROM sales s
+WHERE s.customer_phone IS NOT NULL
+  AND BTRIM(s.customer_phone) <> ''
+GROUP BY s.customer_phone
+ON CONFLICT (phone) DO NOTHING;
+
+-- Backfill: link historical sales to the customer row with the same phone.
+UPDATE sales s
+SET customer_id = c.id
+FROM customers c
+WHERE s.customer_id IS NULL
+  AND s.customer_phone IS NOT NULL
+  AND c.phone = s.customer_phone;
+
+-- Keep the denormalised first/last purchase stamps honest for backfilled rows.
+UPDATE customers c
+SET first_purchase_at = agg.first_sale,
+    last_purchase_at = agg.last_sale
+FROM (
+  SELECT customer_id, MIN(sold_at) AS first_sale, MAX(sold_at) AS last_sale
+  FROM sales
+  WHERE customer_id IS NOT NULL
+  GROUP BY customer_id
+) agg
+WHERE c.id = agg.customer_id;

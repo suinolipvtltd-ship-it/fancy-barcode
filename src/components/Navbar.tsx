@@ -26,6 +26,12 @@ export default async function Navbar() {
           >
             Reminders
           </Link>
+          <Link
+            href="/crm"
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            Customers
+          </Link>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-gray-500">{user.email}</span>
