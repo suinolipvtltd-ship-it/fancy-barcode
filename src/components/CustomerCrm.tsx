@@ -92,6 +92,9 @@ function toDraft(children: CustomerRecord["children"]): DraftChild[] {
 const inputClass =
   "w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500";
 
+/** How many customers the sidebar shows per page. */
+const PAGE_SIZE = 25;
+
 /* -------------------------------------------------------------------------- */
 /* Editor                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -578,6 +581,7 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
   const [customers, setCustomers] = useState<CustomerRecord[]>(initial);
   const [query, setQuery] = useState("");
   const [reviewDueOnly, setReviewDueOnly] = useState(false);
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(initial[0]?.id ?? null);
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -705,6 +709,19 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
     [customers, reviewDueOnly],
   );
 
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  // Clamp rather than trust `page`: filters and searches can shrink the list.
+  const currentPage = Math.min(page, pageCount - 1);
+  const paged = useMemo(
+    () => visible.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
+    [visible, currentPage],
+  );
+
+  // Jump back to the first page whenever the filter or search term changes.
+  useEffect(() => {
+    setPage(0);
+  }, [query, reviewDueOnly]);
+
   const dueCount = useMemo(
     () => customers.filter((customer) => customer.reviewedAt === null && customer.visits > 0).length,
     [customers],
@@ -731,6 +748,7 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
       const customer = data.customer as CustomerDetail;
       upsert(customer);
       setSelectedId(customer.id);
+      setPage(0);
       setAdding(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add this customer.");
@@ -762,7 +780,14 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
               Review pending ({dueCount})
             </label>
             <span className="text-slate-500">
-              {searching ? "Searching…" : `${visible.length} shown`}
+              {searching
+                ? "Searching…"
+                : visible.length === 0
+                  ? "0 shown"
+                  : `${currentPage * PAGE_SIZE + 1}–${Math.min(
+                      (currentPage + 1) * PAGE_SIZE,
+                      visible.length,
+                    )} of ${visible.length}`}
             </span>
           </div>
           <button
@@ -791,7 +816,7 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
               create them automatically.
             </li>
           )}
-          {visible.map((customer) => {
+          {paged.map((customer) => {
             const due = customer.reviewedAt === null;
             const active = customer.id === selectedId;
             return (
@@ -838,6 +863,33 @@ export default function CustomerCrm({ initial, reviewUrl }: Props) {
             );
           })}
         </ul>
+
+        {pageCount > 1 && (
+          <nav
+            className="flex items-center justify-between gap-2 text-xs text-slate-400"
+            aria-label="Customer list pagination"
+          >
+            <button
+              type="button"
+              onClick={() => setPage((value) => Math.max(0, value - 1))}
+              disabled={currentPage === 0}
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="tabular-nums">
+              Page {currentPage + 1} of {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
+              disabled={currentPage >= pageCount - 1}
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </nav>
+        )}
       </aside>
 
       {/* ---------------------------------------------------------------- */}
